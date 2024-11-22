@@ -46,11 +46,11 @@ if not os.path.exists("cars"):
     os.makedirs("cars")
 
 # folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data\\same_as_daojin"
-folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
+folder = "data\\"
 filename = os.path.join(folder,"merge_data_gaolitong.csv")
 data = pd.read_csv(filename,encoding = 'gbk')
 
-folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
+# folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
 configs = pd.read_csv(os.path.join(folder,"configs_gaolitong.csv"))
 
 
