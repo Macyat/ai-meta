@@ -1,0 +1,10 @@
+numpy
+matplotlib
+sklearn
+imbalanced-learn
+lightgbm
+scipy
+pandas
+pywt
+pylint
+pytest
