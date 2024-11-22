@@ -1,10 +1,13 @@
 numpy
 matplotlib
-sklearn
+scikit-learn
 imbalanced-learn
 lightgbm
 scipy
 pandas
-pywt
+PyWavelets
 pylint
 pytest
+black
+click
+pytest-cov
