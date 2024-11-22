@@ -6,3 +6,5 @@ lightgbm
 scipy
 pandas
 pywt
+pylint
+pytest
