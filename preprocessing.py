@@ -10,7 +10,7 @@ def process(X1):
     for i in range(len(X1)):
         X1_smooth[i, :] = wiener(X1[i, :], mysize=None, noise=None)
         X1_smooth[i, :] = savgol_filter(X1_smooth[i, :], 15, 3)
-        X1_smooth[i, :] = utils.wavelet_denoising(X1_smooth[i, :], 'sym4', 2)[1:]
+        X1_smooth[i, :] = utils.wavelet_denoising(X1_smooth[i, :], "sym4", 2)[1:]
         X1_snv[i, :] = utils.standardize_data(X1_smooth[i, :])  ## snv
     return X1_snv, X1_smooth
 
@@ -18,11 +18,11 @@ def process(X1):
 def get_configs(label, data, start, end, first_wave):
     days = data.values[start:end, 0]
     TUR = data.values[start:end, 614]
-    X1 = data.values[start:end, first_wave:612].astype('float64')
-    X2 = data.values[:, 615:1226].astype('float64')
+    X1 = data.values[start:end, first_wave:612].astype("float64")
+    X2 = data.values[:, 615:1226].astype("float64")
 
     if label == "KMNO":  # CODMn
-        target = data.values[start:end,1233]
+        target = data.values[start:end, 1233]
         ranges = [2, 4, 6, 10, 15]
         cut_bound = 4  # the bound for outliers
         lower_bound = 0.5  # the detection limit
@@ -33,7 +33,7 @@ def get_configs(label, data, start, end, first_wave):
         X2, _ = process(X2)
 
     elif label == "COD":
-        target = data.values[start:end,1230]
+        target = data.values[start:end, 1230]
         ranges = [15, 15, 20, 30, 40]
         cut_bound = 15
         lower_bound = 4
@@ -44,7 +44,7 @@ def get_configs(label, data, start, end, first_wave):
         X2, _ = process(X2)
 
     elif label == "TN":
-        target = data.values[start:end,1231]
+        target = data.values[start:end, 1231]
         ranges = [0.2, 0.5, 1, 1.5, 2]
         cut_bound = 2
         lower_bound = 0.5
@@ -55,7 +55,7 @@ def get_configs(label, data, start, end, first_wave):
         X2, _ = process(X2)
 
     elif label == "TP":
-        target = data.values[start:end,1232]
+        target = data.values[start:end, 1232]
         ranges = [0.02, 0.1, 0.2, 0.3, 0.4]
         cut_bound = 1
         lower_bound = 0.01
@@ -66,7 +66,7 @@ def get_configs(label, data, start, end, first_wave):
         X2, _ = process(X2)
 
     elif label == "AN":
-        target = data.values[start:end,1229]
+        target = data.values[start:end, 1229]
         ranges = [0.15, 0.5, 1, 1.5, 2]
         cut_bound = 1
         lower_bound = 0.025
@@ -94,13 +94,15 @@ def get_configs(label, data, start, end, first_wave):
     days = days[valid_idx]
     TUR = TUR[valid_idx]
 
-    return {'days': days,
-            'X1': X1,
-            'target': target,
-            'TUR': TUR,
-            'ranges': ranges,
-            'cut_bound': cut_bound,
-            'lower_bound': lower_bound,
-            'upper_bound': upper_bound,
-            'abs_error_bound': abs_error_bound,
-            'mape_bound': mape_bound}
+    return {
+        "days": days,
+        "X1": X1,
+        "target": target,
+        "TUR": TUR,
+        "ranges": ranges,
+        "cut_bound": cut_bound,
+        "lower_bound": lower_bound,
+        "upper_bound": upper_bound,
+        "abs_error_bound": abs_error_bound,
+        "mape_bound": mape_bound,
+    }
