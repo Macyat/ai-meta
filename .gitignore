@@ -1,0 +1,10 @@
+# .gitignore
+
+# 忽略所有 .png 文件
+*.png
+
+# 忽略所有 .csv 文件
+*.csv
+
+# 忽略所有 .plk 文件
+*.pkl
