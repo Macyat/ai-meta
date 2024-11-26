@@ -9,4 +9,6 @@
 # 忽略所有 .plk 文件
 *.pkl
 
+*.pyc
+
  __pycache__/
