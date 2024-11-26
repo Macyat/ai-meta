@@ -11,4 +11,6 @@
 
 *.pyc
 
+*.pdf
+
  __pycache__/
