@@ -15,19 +15,24 @@ def process(X1):
     return X1_snv, X1_smooth
 
 
-def get_configs(label, data, start, end, first_wave):
+def get_configs(label, data, start, end, first_wave, location):
     days = data.values[start:end, 0]
-    TUR = data.values[start:end, 614]
-    X1 = data.values[start:end, first_wave:612].astype("float64")
-    X2 = data.values[:, 615:1226].astype("float64")
-    TN = data.values[start:end, 1231]
-    KMNO = data.values[start:end, 1233]
-    COD = data.values[start:end, 1230]
-    TP = data.values[start:end, 1232]
-    AN = data.values[start:end, 1229]
+    if "daojin" in location:
+        L = 711
+    else:
+        L = 611
+    print(L)
+    TUR = data.values[start:end, L + 3]
+    X1 = data.values[start:end, first_wave : (L + 1)].astype("float64")
+    X2 = data.values[:, (L + 4) : (2 * L + 4)].astype("float64")
+    AN = data.values[start:end, 2 * L + 7]
+    COD = data.values[start:end, 2 * L + 8]
+    TN = data.values[start:end, 2 * L + 9]
+    TP = data.values[start:end, 2 * L + 10]
+    KMNO = data.values[start:end, 2 * L + 11]
 
     if label == "KMNO":  # CODMn
-        target = data.values[start:end, 1233]
+        target = KMNO
         ranges = [2, 4, 6, 10, 15]
         cut_bound = 4  # the bound for outliers
         lower_bound = 0.5  # the detection limit
@@ -38,7 +43,7 @@ def get_configs(label, data, start, end, first_wave):
         X2, _ = process(X2)
 
     elif label == "COD":
-        target = data.values[start:end, 1230]
+        target = COD
         ranges = [15, 15, 20, 30, 40]
         cut_bound = 15
         lower_bound = 4
@@ -49,7 +54,7 @@ def get_configs(label, data, start, end, first_wave):
         X2, _ = process(X2)
 
     elif label == "TN":
-        target = data.values[start:end, 1231]
+        target = TN
         ranges = [0.2, 0.5, 1, 1.5, 2]
         cut_bound = 2
         lower_bound = 0.5
@@ -60,7 +65,7 @@ def get_configs(label, data, start, end, first_wave):
         X2, _ = process(X2)
 
     elif label == "TP":
-        target = data.values[start:end, 1232]
+        target = TP
         ranges = [0.02, 0.1, 0.2, 0.3, 0.4]
         cut_bound = 1
         lower_bound = 0.01
@@ -71,7 +76,7 @@ def get_configs(label, data, start, end, first_wave):
         X2, _ = process(X2)
 
     elif label == "AN":
-        target = data.values[start:end, 1229]
+        target = AN
         ranges = [0.15, 0.5, 1, 1.5, 2]
         cut_bound = 1
         lower_bound = 0.025

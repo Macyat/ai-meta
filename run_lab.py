@@ -22,14 +22,14 @@ compared_label = args.compared_label
 
 if location == "daojin":
     location = "Lab_daojin"
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
-    start = "751"
-    filename = "merge_data_gaolitong.csv"
-else:
-    location = "Lab_gaolitong"
     folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\daojin"
     start = "383"
     filename = "merge_data_daojin.csv"
+else:
+    location = "Lab_gaolitong"
+    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
+    start = "751"
+    filename = "merge_data_gaolitong.csv"
 
 model_types = [
     "SDG",  # this is bad at the moment

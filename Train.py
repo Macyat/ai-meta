@@ -36,9 +36,6 @@ parser.add_argument("-location", type=str, help="where the samples are collected
 parser.add_argument("-folder", type=str, help="where the data locates")
 parser.add_argument("-filename", type=str, help="name of the data table")
 
-###example bash code###
-# python Train.py -label CODMn -start 0 -end 363 -first_wave 11 -model_type pls -cars_iterations 1
-
 
 random.seed(10)
 rng = np.random.RandomState(1)
@@ -68,22 +65,13 @@ first_wave = args.first_wave
 model_type = args.model_type
 location = args.location
 cars_iterations = args.cars_iterations
-# re_train = args.re_train in ["True", "Yes", "Y", "1", "true", "y", "yes"]
-
-# folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data\\same_as_daojin"
-if "LAB" in location:
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
-else:
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data\\same_as_daojin"
-folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
 folder = args.folder
-filename = os.path.join(folder, "merge_data_gaolitong.csv")
 filename = os.path.join(folder, args.filename)
 data = pd.read_csv(filename, encoding="gbk")
+
+
 if end == -1:
     end = len(data)
-
-folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
 
 
 ### only evaluate results where the turbidity is lower the TUR_bound
@@ -92,11 +80,11 @@ if label == "TUR":
 else:
     TUR_bound = 20
 
+config = preprocessing.get_configs(label, data, start, end, first_wave, location)
+
 if "daojin" in args.filename:
-    config = preprocessing_daojin.get_configs(label, data, start, end, first_wave)
     configs = pd.read_csv(os.path.join(folder, "configs_daojin.csv"))
 else:
-    config = preprocessing.get_configs(label, data, start, end, first_wave)
     configs = pd.read_csv(os.path.join(folder, "configs_gaolitong.csv"))
 
 
@@ -121,20 +109,6 @@ print(
 min_minRMSECV = 100
 lis_best = list(range(611))
 rindex_best = 30
-
-# for i in range(cars_iterations):
-#     lis, minRMSECV,rindex = CARS.CARS_Cloud(X1_snv, config['target'], config['days'], 800, N=20)
-#
-#     if minRMSECV < min_minRMSECV:
-#         min_minRMSECV = minRMSECV
-#         lis_best = lis
-#         rindex_best = rindex
-#
-# print('wavelengths selected', lis_best)
-# print('')
-# print('number of latent vectors', rindex_best + 1)
-# print('min RMSE by cars', min_minRMSECV)
-# print('')
 
 
 ###model training###
