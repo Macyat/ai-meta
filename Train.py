@@ -32,8 +32,8 @@ parser.add_argument(
 parser.add_argument("-model_type", type=str, help="the model selected")
 parser.add_argument("-cars_iterations", type=int, help="the times for running cars")
 parser.add_argument("-location", type=str, help="where the samples are collected")
-parser.add_argument("-folder", type=str, help="where the data locates")
-parser.add_argument("-filename", type=str, help="name of the data table")
+parser.add_argument("-parent_folder", type=str, help="where the data locates")
+# parser.add_argument("-filename", type=str, help="name of the data table")
 
 
 random.seed(10)
@@ -64,8 +64,25 @@ first_wave = args.first_wave
 model_type = args.model_type
 location = args.location
 cars_iterations = args.cars_iterations
-folder = args.folder
-filename = os.path.join(folder, args.filename)
+parent_folder = args.parent_folder
+if "gaolitong" in location:
+    if "select" in location:
+        sub_dir = "gaolitong\\same_as_daojin"
+    else:
+        sub_dir = "gaolitong"
+    filename = os.path.join(parent_folder, sub_dir, "merge_data_gaolitong.csv")
+    configs = pd.read_csv(
+        os.path.join(parent_folder, "gaolitong\\configs_gaolitong.csv")
+    )
+
+else:
+    if "select" in location:
+        sub_dir = "daojin\\same_as_gaolitong"
+    else:
+        sub_dir = "daojin"
+    filename = os.path.join(parent_folder, sub_dir, "merge_data_daojin.csv")
+    configs = pd.read_csv(os.path.join(parent_folder, "daojin\\configs_daojin.csv"))
+
 data = pd.read_csv(filename, encoding="gbk")
 
 
@@ -80,11 +97,6 @@ else:
     TUR_bound = 20
 
 config = preprocessing.get_configs(label, data, start, end, first_wave, location)
-
-if "daojin" in args.filename:
-    configs = pd.read_csv(os.path.join(folder, "configs_daojin.csv"))
-else:
-    configs = pd.read_csv(os.path.join(folder, "configs_gaolitong.csv"))
 
 
 evaluate_idx = utils.select_idx(

@@ -30,28 +30,19 @@ location = args.location
 parent_folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\"
 
 if location == "gaolitong":
-    filename = "merge_data_gaolitong.csv"
-    location = "Futian_gaolitong"
     if select_same_period:
-        sub_dir = "gaolitong\\same_as_daojin"
         end = "364"
-        location = "Futian_gaolitong"
-    else:
-        sub_dir = "gaolitong"
-        end = "751"
         location = "Futian_gaolitong_select"
-else:
-    filename = "merge_data_daojin.csv"
-    location = "Futian_daojin"
-    if select_same_period:
-        sub_dir = "daojin\\same_as_gaolitong"
-        end = "364"
-        location = "Futian_daojin"
     else:
-        sub_dir = "daojin"
-        end = "383"
+        end = "751"
+        location = "Futian_gaolitong"
+else:
+    if select_same_period:
+        end = "364"
         location = "Futian_daojin_select"
-folder = os.path.join(parent_folder, sub_dir)
+    else:
+        end = "383"
+        location = "Futian_daojin"
 
 
 model_types = [
@@ -100,10 +91,8 @@ for t in model_types:
                 location,
                 " -compared_label ",
                 compared_label,
-                " -folder ",
-                folder,
-                " -filename ",
-                filename,
+                " -parent_folder ",
+                parent_folder,
             ]
         )
         print(command)

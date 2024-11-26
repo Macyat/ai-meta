@@ -25,16 +25,11 @@ parent_folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\"
 
 if location == "daojin":
     location = "Lab_daojin"
-    sub_dir = "daojin"
     start = "383"
-    filename = "merge_data_daojin.csv"
 else:
     location = "Lab_gaolitong"
-    sub_dir = "gaolitong"
     start = "751"
-    filename = "merge_data_gaolitong.csv"
 
-folder = os.path.join(parent_folder, sub_dir)
 
 model_types = [
     "SDG",  # this is bad at the moment
@@ -76,10 +71,8 @@ for t in model_types:
                 location,
                 " -compared_label ",
                 compared_label,
-                " -folder ",
-                folder,
-                " -filename ",
-                filename,
+                " -parent_folder ",
+                parent_folder,
             ]
         )
         print(command)
