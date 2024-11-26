@@ -400,6 +400,8 @@ def bayes_ridge_meta(in_data, target, bound, days, configs, label):
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -443,11 +445,13 @@ def bayes_ridge_meta(in_data, target, bound, days, configs, label):
 
 def elastic_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a Linear regression model with combined L1 and L2 priors as regularizer.
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -494,11 +498,13 @@ def elastic_meta(in_data, target, bound, days, configs, label):
 
 def lasso_lars_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a Lasso model fit with Least Angle Regression a.k.a. Lars.
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -547,11 +553,13 @@ def lasso_lars_meta(in_data, target, bound, days, configs, label):
 
 def huber_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a L2-regularized linear regression model that is robust to outliers
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -598,11 +606,13 @@ def huber_meta(in_data, target, bound, days, configs, label):
 
 def quantile_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a Linear regression model that predicts conditional quantiles.
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -651,11 +661,13 @@ def quantile_meta(in_data, target, bound, days, configs, label):
 
 def ransar_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a RANSAC (RANdom SAmple Consensus) algorithm
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -713,11 +725,13 @@ def ransar_meta(in_data, target, bound, days, configs, label):
 
 def theilsen_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a Theil-Sen Estimator
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -761,11 +775,13 @@ def theilsen_meta(in_data, target, bound, days, configs, label):
 
 def gamma_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a Generalized Linear Model with a Gamma distribution
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -809,11 +825,13 @@ def gamma_meta(in_data, target, bound, days, configs, label):
 
 def poisson_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a Generalized Linear Model with a Poisson distribution
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -857,11 +875,13 @@ def poisson_meta(in_data, target, bound, days, configs, label):
 
 def tweedie_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a Generalized Linear Model with a Tweedie distribution
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -905,11 +925,13 @@ def tweedie_meta(in_data, target, bound, days, configs, label):
 
 def passive_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a PassiveAggressive regression model
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -953,11 +975,13 @@ def passive_meta(in_data, target, bound, days, configs, label):
 
 def SDG_meta(in_data, target, bound, days, configs, label):
     """
-    To train a bayesian ridge regression model
+    To train a SDG regression model
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     data_type = create_type(target, bound)
@@ -1009,11 +1033,13 @@ def SDG_meta(in_data, target, bound, days, configs, label):
 
 def multi_meta(in_data, days, configs, config, label):
     """
-    To train a bayesian ridge regression model
+    To train a MultiTaskLasso regression model
     :param in_data: the spectrum matrix for training
     :param target: the target to predict
     :param bound: the bound to define outliers
     :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
     :return: the predicted value and two models with their scores
     """
     unique_day = np.unique(days)
