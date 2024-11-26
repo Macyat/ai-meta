@@ -45,33 +45,38 @@ def evaluate(res, target, ranges, idx, abs_error_bound, mape_bound):
     bad_idx = []
     bad_grouped = 0
     for i in range(len(idx)):
-        if target[i] <= ranges[1]:
-            if res[i] <= ranges[1]:
-                count += 1
-            else:
-                bad_grouped += 1
+        if target[i] <= ranges[1] and res[i] > ranges[1]:
+            bad_grouped += 1
+        elif ranges[1] < target[i] <= ranges[2] and res[i] > ranges[2]:
+            bad_grouped += 1
+        elif ranges[2] < target[i] <= ranges[3] and res[i] > ranges[3]:
+            bad_grouped += 1
+        elif (
+            len(ranges) >= 5
+            and ranges[3] < target[i] <= ranges[4]
+            and res[i] > ranges[4]
+        ):
+            bad_grouped += 1
 
-        elif ranges[1] < target[i] <= ranges[2]:
-            if ranges[1] < res[i] <= ranges[2]:
-                count += 1
-            elif res[i] > ranges[2]:
-                bad_grouped += 1
+    for i in range(len(idx)):
+        if target[i] <= ranges[1] and res[i] <= ranges[1]:
+            count += 1
 
-        elif ranges[2] < target[i] <= ranges[3]:
-            if ranges[2] < res[i] <= ranges[3]:
-                count += 1
-            elif res[i] > ranges[3]:
-                count += 1
+        elif ranges[1] < target[i] <= ranges[2] and ranges[1] < res[i] <= ranges[2]:
+            count += 1
 
-        elif len(ranges) >= 5 and ranges[3] < target[i] <= ranges[4]:
-            if ranges[3] < res[i] <= ranges[4]:
-                count += 1
-            elif res[i] > ranges[4]:
-                bad_grouped += 1
+        elif ranges[2] < target[i] <= ranges[3] and ranges[2] < res[i] <= ranges[3]:
+            count += 1
 
-        elif len(ranges) >= 5 and ranges[4] < target[i]:
-            if ranges[4] < res[i]:
-                count += 1
+        elif (
+            len(ranges) >= 5
+            and ranges[3] < target[i] <= ranges[4]
+            and ranges[3] < res[i] <= ranges[4]
+        ):
+            count += 1
+
+        elif len(ranges) >= 5 and ranges[4] < target[i] and ranges[4] < res[i]:
+            count += 1
 
         elif target[i] < ranges[2] and abs(target[i] - res[i]) <= abs_error_bound:
             count += 1
