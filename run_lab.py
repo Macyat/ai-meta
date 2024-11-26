@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 
@@ -20,16 +21,20 @@ args = parser.parse_args()
 location = args.location
 compared_label = args.compared_label
 
+parent_folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\"
+
 if location == "daojin":
     location = "Lab_daojin"
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\daojin"
+    sub_dir = "daojin"
     start = "383"
     filename = "merge_data_daojin.csv"
 else:
     location = "Lab_gaolitong"
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
+    sub_dir = "gaolitong"
     start = "751"
     filename = "merge_data_gaolitong.csv"
+
+folder = os.path.join(parent_folder, sub_dir)
 
 model_types = [
     "SDG",  # this is bad at the moment

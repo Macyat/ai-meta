@@ -1,9 +1,15 @@
+import os
 import subprocess
 import sys
 import argparse
-
+from fileinput import filename
 
 parser = argparse.ArgumentParser(description="Algorithm for gaolitong")
+parser.add_argument(
+    "-location",
+    type=str,
+    help="gaolitong data or daojin data",
+)
 parser.add_argument(
     "-select",
     type=str,
@@ -19,15 +25,33 @@ parser.add_argument(
 args = parser.parse_args()
 select_same_period = args.select in ["True", "Yes", "Y", "1", "true", "y", "yes"]
 compared_label = args.compared_label
+location = args.location
 
-if select_same_period:
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data\\same_as_daojin"
-    end = "364"
+parent_folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\"
+
+if location == "gaolitong":
+    filename = "merge_data_gaolitong.csv"
     location = "Futian_gaolitong"
+    if select_same_period:
+        sub_dir = "gaolitong\\same_as_daojin"
+        end = "364"
+        location = "Futian_gaolitong"
+    else:
+        sub_dir = "gaolitong"
+        end = "751"
+        location = "Futian_gaolitong_select"
 else:
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
-    end = "751"
-    location = "Futian_gaolitong_select"
+    filename = "merge_data_daojin.csv"
+    location = "Futian_daojin"
+    if select_same_period:
+        sub_dir = "daojin\\same_as_gaolitong"
+        end = "364"
+        location = "Futian_daojin"
+    else:
+        sub_dir = "daojin"
+        end = "383"
+        location = "Futian_daojin_select"
+folder = os.path.join(parent_folder, sub_dir)
 
 
 model_types = [
@@ -58,7 +82,9 @@ labels = ["KMNO", "TN", "TP", "AN", "COD", "TUR"]
 for t in model_types:
     for l in labels:
         start = "0"
-        if l == "TN":  # for TN, the first 10 gaolitong labels are nonsense
+        if (
+            l == "TN" and "gaolitong" in location
+        ):  # for TN, the first 10 gaolitong labels are nonsense
             start = "10"
         command = "".join(
             [
@@ -77,7 +103,7 @@ for t in model_types:
                 " -folder ",
                 folder,
                 " -filename ",
-                "merge_data_gaolitong.csv",
+                filename,
             ]
         )
         print(command)

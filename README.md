@@ -11,10 +11,10 @@ make install
 type the following codes in your command line
 
 ### for the futian river dataset (scanned by Shimadzu):
-python run_futian_daojin.py -select 1 -compared_label COD
+python run_futian.py -location daojin -select 0 -compared_label COD
 
 ### for the futian river dataset (scanned by Gaolitong):
-python run_futian_gaolitong.py -select 1 -compared_label COD
+python run_futian.py -location gaolitong -select 0 -compared_label COD
 
 ### for the lab dataset (scanned by Gaolitong):
 python run_lab.py -location gaolitong -compared_label COD
