@@ -2,8 +2,7 @@
 this is a repo for predicting water quality with UV-VIS spectrum data.
 
 ## you need to change all the places that mention the location of an input data(the .csv) to your own path
-in the *.py files, command line codes, anywhere needed to be updated
-
+"move the files in the "data" folder to your local path, and change the "parent_folder" in "run_lab.py" and "run_futian.py"
 ## how to set up the requirement libs
 make install
 
