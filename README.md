@@ -24,3 +24,6 @@ python run_lab.py -location daojin -compared_label COD
 ## how to train for a single element and on a single model
 python Train.py -label TUR -start 0 -end 364 -first_wave 11 -model_type SDG -cars_iterations 1 -location Futian_daojin -compared_label TN -folder E:\Matlab\futian\futian\futian1\raw_data\daojin\same_as_gaolitong -filename merge_data_daojin.csv
 
+## to update all(choose any label to be compared with)
+python daily_update.py -compared_label COD
+
