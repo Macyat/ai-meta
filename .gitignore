@@ -12,5 +12,7 @@
 *.pyc
 
 *.pdf
+*.opf
+*.jpg
 
  __pycache__/
