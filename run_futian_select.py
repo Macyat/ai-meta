@@ -2,7 +2,7 @@ import subprocess
 import sys
 
 model_types = [
-    "SDG",
+    "SDG",  # this is bad at the moment
     "tweedie",
     "gamma",
     "passive",

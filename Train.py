@@ -19,7 +19,7 @@ import preprocessing_daojin
 
 warnings.filterwarnings("ignore")
 
-parser = argparse.ArgumentParser(description="Algorithm for gaolitong")
+parser = argparse.ArgumentParser(description="Entry for training")
 # parser.add_argument("-re_train", type=str,help="Retrain or not")
 parser.add_argument("-label", type=str, help="element to predict")
 parser.add_argument(
@@ -502,12 +502,13 @@ with open("metrics\\" + location + "_" + label + ".csv", "w", newline="") as f:
 
 
 ### save models
-with open(
-    "models\\" + location + "_" + label + "_" + model_type + "_best_fit" + ".pkl", "wb"
-) as f:
-    pickle.dump(best_fit_model, f)
-with open(
-    "models\\" + location + "_" + label + "_" + model_type + "_best_predict" + ".pkl",
-    "wb",
-) as f:
-    pickle.dump(best_predict_model, f)
+### these files can cost a lot of disk space, use them only when you want to bypass the training process
+# with open(
+#     "models\\" + location + "_" + label + "_" + model_type + "_best_fit" + ".pkl", "wb"
+# ) as f:
+#     pickle.dump(best_fit_model, f)
+# with open(
+#     "models\\" + location + "_" + label + "_" + model_type + "_best_predict" + ".pkl",
+#     "wb",
+# ) as f:
+#     pickle.dump(best_predict_model, f)

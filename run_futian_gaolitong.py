@@ -1,11 +1,9 @@
 import subprocess
 import sys
-from fileinput import filename
-
 import argparse
 
 
-parser = argparse.ArgumentParser(description="Algorithm for daojin")
+parser = argparse.ArgumentParser(description="Algorithm for gaolitong")
 parser.add_argument(
     "-select",
     type=str,
@@ -17,12 +15,23 @@ parser.add_argument(
     help="another element to be compared with",
 )
 
+
 args = parser.parse_args()
 select_same_period = args.select in ["True", "Yes", "Y", "1", "true", "y", "yes"]
 compared_label = args.compared_label
 
+if select_same_period:
+    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data\\same_as_daojin"
+    end = "364"
+    location = "Futian_gaolitong"
+else:
+    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
+    end = "751"
+    location = "Futian_gaolitong_select"
+
+
 model_types = [
-    "SDG",  # this is bad at the moment
+    "SDG",
     "tweedie",
     "gamma",
     "passive",
@@ -44,19 +53,13 @@ model_types = [
     "theilsen",
 ]
 labels = ["KMNO", "TN", "TP", "AN", "COD", "TUR"]
-if select_same_period:
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\daojin\\same_as_gaolitong"
-    end = "364"
-    location = "Futian_daojin"
-else:
-    folder = "E:\\Matlab\\futian\\futian\\futian1\\daojin\\data"
-    end = "383"
-    location = "Futian_daojin_select"
 
 
 for t in model_types:
     for l in labels:
         start = "0"
+        if l == "TN":  # for TN, the first 10 gaolitong labels are nonsense
+            start = "10"
         command = "".join(
             [
                 "python Train.py -label ",
@@ -74,7 +77,7 @@ for t in model_types:
                 " -folder ",
                 folder,
                 " -filename ",
-                "merge_data_daojin.csv",
+                "merge_data_gaolitong.csv",
             ]
         )
         print(command)

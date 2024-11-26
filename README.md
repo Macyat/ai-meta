@@ -1,17 +1,27 @@
 # ai-meta
 this is a repo for predicting water quality with UV-VIS spectrum data.
 
-## how to set up
+## you need to change all the places that mention the location of an input data(the .csv) to your own path
+in the *.py files, command line codes, anywhere needed to be updated
+
+## how to set up the requirement libs
 make install
 
-## how to train models and make predictions for all elements and with all models
+## examples
 type the following codes in your command line
 
-### for the futian river dataset:
-python run_futian.py
+### for the futian river dataset (scanned by Shimadzu):
+python run_futian_daojin.py -select 1 -compared_label COD
 
-### for the lab dataset:
-python run_lab.py
+### for the futian river dataset (scanned by Gaolitong):
+python run_futian_gaolitong.py -select 1 -compared_label COD
+
+### for the lab dataset (scanned by Gaolitong):
+python run_lab.py -location gaolitong -compared_label COD
+
+### for the lab dataset (scanned by Shimadzu):
+python run_lab.py -location daojin -compared_label COD
 
 ## how to train for a single element and with a single model
-python Train.py -label KMNO -start 364 -end -1 -first_wave 11 -model_type ridge -cars_iterations 1 -location LAB
+python Train.py -label TUR -start 0 -end 364 -first_wave 11 -model_type SDG -cars_iterations 1 -location Futian_daojin -compared_label TN -folder E:\Matlab\futian\futian\futian1\raw_data\daojin\same_as_gaolitong -filename merge_data_daojin.csv
+
