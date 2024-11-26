@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id" version="2.0">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">81</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">f3e1de26-505e-40e8-b211-c832fce15d0c</dc:identifier>
+        <dc:title>Python for DevOps</dc:title>
+        <dc:creator opf:file-as="Noah Gift, Kennedy Behrman, Alfredo Deza &amp; Gheorghiu, Grig" opf:role="aut">Noah Gift, Kennedy Behrman, Alfredo Deza</dc:creator>
+        <dc:creator opf:file-as="Noah Gift, Kennedy Behrman, Alfredo Deza &amp; Gheorghiu, Grig" opf:role="aut">Grig Gheorghiu</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (7.19.0) [https://calibre-ebook.com]</dc:contributor>
+        <dc:date>2020-06-11T19:19:32+00:00</dc:date>
+        <dc:language>en</dc:language>
+        <meta name="calibre:timestamp" content="2024-11-26T03:12:05.955242+00:00"/>
+        <meta name="calibre:title_sort" content="Python for DevOps"/>
+    </metadata>
+    <guide>
+        <reference type="cover" title="Cover" href="cover.jpg"/>
+    </guide>
+</package>
