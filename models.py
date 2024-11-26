@@ -1,12 +1,27 @@
 import random
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.stats import alpha
 from sklearn import linear_model
 from sklearn.ensemble import AdaBoostRegressor
-from sklearn.linear_model import Ridge
+from sklearn.gaussian_process.kernels import (
+    RationalQuadratic,
+    WhiteKernel,
+    ConstantKernel,
+)
+from sklearn.linear_model import (
+    Ridge,
+    SGDRegressor,
+    ElasticNet,
+    HuberRegressor,
+    QuantileRegressor,
+    RANSACRegressor,
+    TheilSenRegressor,
+)
 from imblearn.over_sampling import ADASYN
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.metrics import r2_score
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from lightgbm import LGBMRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -46,6 +61,21 @@ def res_lower_cap(lower_bound, ranges, res):
             res[i] = random.uniform(
                 min(lower_bound, ranges[0]), max(lower_bound, ranges[0])
             )
+    return res
+
+
+def res_upper_cap(upper_bound, bound1, bound2, res):
+    """
+    Replace the values bigger than a threshold with some smaller random values
+    :param upper_bound: the threshold
+    :param bound1: the lower bound for random values
+    :param bound2: the upper bound for random values
+    :param res: the predicted concentration vector
+    :return: the processed concentration vector
+    """
+    for i in range(len(res)):
+        if res[i] > upper_bound:
+            res[i] = random.uniform(bound1, bound2)
     return res
 
 
@@ -98,7 +128,7 @@ def pls_meta(in_data, target, bound, days, select_wave, location, label, model_t
                 X_train,
                 y_train,
                 days[train_idx],
-                800,
+                in_data.shape[1],
                 location,
                 label,
                 model_type,
@@ -344,12 +374,12 @@ def lgbm_meta(in_data, target, bound, days, configs, label):
         ).fit(X_train, y_train)
         res_train.extend(model.predict(X_val))
         Xtest = in_data[test_idx, :]
-        if r2_score(model.predict(X_val), target[test_idx]) > best_score1:
-            best_score1 = r2_score(model.predict(X_val), target[test_idx])
-            best_model_fit = model
-        if r2_score(model.predict(Xtest), target[test_idx]) > best_score2:
-            best_score2 = r2_score(model.predict(Xtest), target[test_idx])
-            best_model_predict = model
+        # if model.score(model.predict(X_val), target[test_idx]) > best_score1:
+        #     best_score1 = r2_score(model.predict(X_val), target[test_idx])
+        #     best_model_fit = model
+        # if r2_score(model.predict(X_val), target[test_idx]) > best_score2:
+        #     best_score2 = r2_score(model.predict(X_val), target[test_idx])
+        #     best_model_predict = model
         print(
             "predicted r2 score at day",
             i,
@@ -360,6 +390,676 @@ def lgbm_meta(in_data, target, bound, days, configs, label):
             i,
             np.sqrt(mean_squared_error(model.predict(Xtest), target[test_idx])),
         )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def bayes_ridge_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+        clf = linear_model.BayesianRidge(alpha_1=configs[label + "1"].values[0])
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def elastic_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+        clf = ElasticNet(alpha=configs[label + "2"].values[0], fit_intercept=True)
+        # clf = make_pipeline(StandardScaler(),
+        #                     SGDRegressor(max_iter=1000, tol=1e-3))
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def lasso_lars_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+        clf = linear_model.LassoLars(
+            alpha=configs[label + "2"].values[0], fit_intercept=True
+        )
+        # clf = make_pipeline(StandardScaler(),
+        #                     SGDRegressor(max_iter=1000, tol=1e-3))
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def huber_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+        clf = HuberRegressor(alpha=configs[label + "1"].values[0], fit_intercept=True)
+        # clf = make_pipeline(StandardScaler(),
+        #                     SGDRegressor(max_iter=1000, tol=1e-3))
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def quantile_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+        clf = QuantileRegressor(
+            alpha=configs[label + "2"].values[0], fit_intercept=True, quantile=0.7
+        )
+        # clf = make_pipeline(StandardScaler(),
+        #                     SGDRegressor(max_iter=1000, tol=1e-3))
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def ransar_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        # c = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+        kernel_ = (
+            1.0 * RationalQuadratic(length_scale=1, alpha=1)
+            + WhiteKernel(1e-1)
+            + ConstantKernel(constant_value=np.mean(target))
+        )
+        c = GaussianProcessRegressor(
+            kernel=kernel_,
+            random_state=0,
+            optimizer="fmin_l_bfgs_b",
+            n_restarts_optimizer=0,
+        )
+        clf = RANSACRegressor(estimator=c, min_samples=0.8)
+        # clf = make_pipeline(StandardScaler(),
+        #                     SGDRegressor(max_iter=1000, tol=1e-3))
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def theilsen_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        clf = TheilSenRegressor()
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def gamma_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        clf = linear_model.GammaRegressor(alpha=configs[label + "2"].values[0])
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def poisson_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        clf = linear_model.PoissonRegressor(alpha=configs[label + "2"].values[0])
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def tweedie_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        clf = linear_model.TweedieRegressor(alpha=configs[label + "2"].values[0])
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def passive_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        clf = linear_model.PassiveAggressiveRegressor(epsilon=0.01, n_iter_no_change=50)
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def SDG_meta(in_data, target, bound, days, configs, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+
+        clf = SGDRegressor(
+            max_iter=1000,
+            tol=1e-3,
+            alpha=configs[label + "1"].values[0],
+            n_iter_no_change=10,
+        )
+        scaler = StandardScaler()
+        scaler.fit(X_train)
+        X_train = scaler.transform(X_train)
+        X_val = scaler.transform(in_data[test_idx, :])
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(X_val))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def multi_meta(in_data, days, configs, config, label):
+    """
+    To train a bayesian ridge regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    # target = [[i,j,k,p,q,z] for i,j,k,p,q,z in zip(config["COD"], config["KMNO"], config["AN"], config["TP"],config["TN"],config["TUR"])]
+    # mapping = {"COD":0,"KMNO":1,"AN":2,"TP":3,"TN":4,"TUR":5}
+    target = [
+        [i, j, k, p, q]
+        for i, j, k, p, q in zip(
+            config["COD"], config["KMNO"], config["AN"], config["TP"], config["TN"]
+        )
+    ]
+    mapping = {"COD": 0, "KMNO": 1, "AN": 2, "TP": 3, "TN": 4, "TUR": 5}
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = [target[i] for i in train_idx]
+
+        clf = linear_model.MultiTaskLasso(max_iter=1000, tol=1e-3, alpha=0.0001)
+        clf.fit(X_train, y_train)
+
+        res_train.extend(
+            [float(i[mapping[label]]) for i in clf.predict(in_data[test_idx, :])]
+        )
+        # Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        # if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+        #     best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+        #     best_model_predict = clf
+        # print(
+        #     "predicted r2 score at day",
+        #     i,
+        #     r2_score(clf.predict(Xtest), target[test_idx]),
+        # )
+        # print(
+        #     "predicted RMSE at day",
+        #     i,
+        #     np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        # )
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
 

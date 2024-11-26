@@ -10,9 +10,12 @@ model_types = [
     "pls",
     "gpr_pca",
     "gpr",
-    "pls_cars",
+    "huber",
+    "elst",
+    "" "pls_cars",
 ]
-labels = ["KMNO", "TN", "TP", "AN", "COD"]
+# labels = ["KMNO", "TN", "TP", "AN", "COD"]
+labels = ["TUR"]
 
 
 for t in model_types:
@@ -21,9 +24,10 @@ for t in model_types:
             [
                 "python Train.py -label ",
                 l,
-                " -start 364 -end -1 -first_wave 11 -model_type ",
+                " -start 766 -end -1 -first_wave 11 -model_type ",
                 t,
                 " -cars_iterations 1 -location LAB_all",
+                " -compared_label COD",
             ]
         )
         print(command)

@@ -1,4 +1,6 @@
 import math
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
@@ -41,18 +43,37 @@ def evaluate(res, target, ranges, idx, abs_error_bound, mape_bound):
     """
     count = 0
     bad_idx = []
+    bad_grouped = 0
     for i in range(len(idx)):
-        if target[i] <= ranges[1] and res[i] <= ranges[1]:
-            count += 1
+        if target[i] <= ranges[1]:
+            if res[i] <= ranges[1]:
+                count += 1
+            else:
+                bad_grouped += 1
+
+        elif ranges[1] < target[i] <= ranges[2]:
+            if ranges[1] < res[i] <= ranges[2]:
+                count += 1
+            elif res[i] > ranges[2]:
+                bad_grouped += 1
+
+        elif ranges[2] < target[i] <= ranges[3]:
+            if ranges[2] < res[i] <= ranges[3]:
+                count += 1
+            elif res[i] > ranges[3]:
+                count += 1
+
+        elif len(ranges) >= 5 and ranges[3] < target[i] <= ranges[4]:
+            if ranges[3] < res[i] <= ranges[4]:
+                count += 1
+            elif res[i] > ranges[4]:
+                bad_grouped += 1
+
+        elif len(ranges) >= 5 and ranges[4] < target[i]:
+            if ranges[4] < res[i]:
+                count += 1
+
         elif target[i] < ranges[2] and abs(target[i] - res[i]) <= abs_error_bound:
-            count += 1
-        elif ranges[1] < target[i] <= ranges[2] and ranges[1] < res[i] <= ranges[2]:
-            count += 1
-        elif ranges[2] < target[i] <= ranges[3] and ranges[2] < res[i] <= ranges[3]:
-            count += 1
-        elif ranges[3] < target[i] <= ranges[4] and ranges[3] < res[i] <= ranges[4]:
-            count += 1
-        elif ranges[4] < target[i] and ranges[4] < res[i]:
             count += 1
         # 三类以上误差
         elif (
@@ -61,15 +82,16 @@ def evaluate(res, target, ranges, idx, abs_error_bound, mape_bound):
             count += 1
         else:
             bad_idx.append(i)
-    return count / len(idx), bad_idx
+    return count / len(idx), bad_idx, bad_grouped / len(idx)
 
 
-def plot(res, target, TUR, idx, label, model_type, location):
+def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location):
     """
     To create some plots supporting model evaluating
     :param res: the predicted values
     :param target: the original target values to be predicted
     :param TUR: the turbidity data
+    :param TN: the TN data
     :param idx: the index of data to be evaluated
     :param label: which element
     :param model_type: which model
@@ -79,27 +101,46 @@ def plot(res, target, TUR, idx, label, model_type, location):
     """
     l1 = [res[i] for i in idx]
     l2 = [target[i] for i in idx]
+    print("IDX LEN", len(idx))
     print("MAPE", mean_absolute_percentage_error(l1, l2))
     print("r2 score", r2_score(l1, l2))
     fig = plt.figure()
-    plt.subplot(311)
+
+    plt.subplot(411)
     plt.scatter(list(range(len(l1))), [abs(i - j) / j for i, j in zip(l1, l2)])
     plt.ylabel("MAPE")
-    plt.subplot(312)
+    plt.xticks([])
+
+    plt.subplot(412)
     plt.scatter(list(range(len(l1))), l1, s=2, edgecolors="r")
     plt.scatter(list(range(len(l2))), l2, s=2, edgecolors="b")
     plt.legend(["PREDICT", "TRUE"])
-    plt.xlabel("Sample ID")
     plt.ylabel(label)
-    plt.subplot(313)
+    plt.xticks([])
+
+    plt.subplot(413)
     plt.scatter(
-        list(range(len([TUR[i] for i in idx]))),
+        list(range(len(idx))),
+        [TN[i] for i in idx],
+        s=2,
+        edgecolors="y",
+    )
+    plt.ylabel(compared_label)
+    plt.xticks([])
+
+    plt.subplot(414)
+    plt.scatter(
+        list(range(len(idx))),
         [TUR[i] for i in idx],
         s=2,
         edgecolors="y",
     )
     plt.ylabel("TUR")
-    plt.savefig("figs\\" + location + "_" + label + "_" + model_type + ".png")
+
+    if not os.path.exists("figs\\" + location):
+        os.makedirs("figs\\" + location)
+
+    plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + ".png")
     return (
         float(mean_absolute_percentage_error(l1, l2)),
         r2_score(l1, l2),

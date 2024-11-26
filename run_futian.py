@@ -2,8 +2,17 @@ import subprocess
 import sys
 
 model_types = [
-    "lgbm",
+    # "SDG",
+    "tweedie",
+    "gamma",
+    "passive",
+    "poisson",
+    "quantile",
+    "huber",
+    "elst",
+    "bayes_ridge",
     "ridge",
+    "lgbm",
     "lasso",
     "ada_ridge",
     "ada_lasso",
@@ -11,19 +20,28 @@ model_types = [
     "gpr_pca",
     "gpr",
     "pls_cars",
+    "ransar",
+    "theilsen",
 ]
-labels = ["KMNO", "TN", "TP", "AN", "COD"]
+labels = ["KMNO", "TN", "TP", "AN", "COD", "TUR"]
+# labels = ["AN"]
 
 
 for t in model_types:
     for l in labels:
+        start = "0"
+        if l == "TN":
+            start = "10"
         command = "".join(
             [
                 "python Train.py -label ",
                 l,
-                " -start 0 -end 363 -first_wave 11 -model_type ",
+                " -start ",
+                start,
+                " -end 751 -first_wave 11 -model_type ",
                 t,
-                " -cars_iterations 1 -location FUTIAN",
+                " -cars_iterations 1 -location FUTIAN_all",
+                " -compared_label TN",
             ]
         )
         print(command)

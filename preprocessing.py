@@ -20,6 +20,11 @@ def get_configs(label, data, start, end, first_wave):
     TUR = data.values[start:end, 614]
     X1 = data.values[start:end, first_wave:612].astype("float64")
     X2 = data.values[:, 615:1226].astype("float64")
+    TN = data.values[start:end, 1231]
+    KMNO = data.values[start:end, 1233]
+    COD = data.values[start:end, 1230]
+    TP = data.values[start:end, 1232]
+    AN = data.values[start:end, 1229]
 
     if label == "KMNO":  # CODMn
         target = data.values[start:end, 1233]
@@ -27,7 +32,7 @@ def get_configs(label, data, start, end, first_wave):
         cut_bound = 4  # the bound for outliers
         lower_bound = 0.5  # the detection limit
         upper_bound = 20
-        abs_error_bound = 0.3  # absolute error bound for smaller concentration
+        abs_error_bound = 1  # absolute error bound for smaller concentration
         mape_bound = 0.15  # mape error bound for bigger concentration
         X1, _ = process(X1)
         X2, _ = process(X2)
@@ -38,7 +43,7 @@ def get_configs(label, data, start, end, first_wave):
         cut_bound = 15
         lower_bound = 4
         upper_bound = 50
-        abs_error_bound = 3
+        abs_error_bound = 4
         mape_bound = 0.15
         X1, _ = process(X1)
         X2, _ = process(X2)
@@ -93,16 +98,29 @@ def get_configs(label, data, start, end, first_wave):
     X2 = X2[valid_idx, :]
     days = days[valid_idx]
     TUR = TUR[valid_idx]
+    TN = TN[valid_idx]
+    COD = COD[valid_idx]
+    KMNO = KMNO[valid_idx]
+    TP = TP[valid_idx]
+    AN = AN[valid_idx]
 
     return {
         "days": days,
         "X1": X1,
         "target": target,
         "TUR": TUR,
+        "TN": TN,
+        "KMNO": KMNO,
+        "COD": COD,
+        "TP": TP,
+        "AN": AN,
         "ranges": ranges,
         "cut_bound": cut_bound,
         "lower_bound": lower_bound,
         "upper_bound": upper_bound,
         "abs_error_bound": abs_error_bound,
         "mape_bound": mape_bound,
+        "upper_bound": ranges[-1] * 1.5,
+        "bound1": ranges[-1],
+        "bound2": ranges[-1] * 1.5,
     }

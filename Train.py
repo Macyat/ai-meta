@@ -15,12 +15,16 @@ import utils
 import os
 import argparse
 import preprocessing
+import preprocessing_daojin
 
 warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description="Algorithm for gaolitong")
 # parser.add_argument("-re_train", type=str,help="Retrain or not")
 parser.add_argument("-label", type=str, help="element to predict")
+parser.add_argument(
+    "-compared_label", type=str, help="another element to be compared in plots"
+)
 parser.add_argument("-start", type=int, help="the first row to train")
 parser.add_argument("-end", type=int, help="the last row to train")
 parser.add_argument(
@@ -29,6 +33,8 @@ parser.add_argument(
 parser.add_argument("-model_type", type=str, help="the model selected")
 parser.add_argument("-cars_iterations", type=int, help="the times for running cars")
 parser.add_argument("-location", type=str, help="where the samples are collected")
+parser.add_argument("-folder", type=str, help="where the data locates")
+parser.add_argument("-filename", type=str, help="name of the data table")
 
 ###example bash code###
 # python Train.py -label CODMn -start 0 -end 363 -first_wave 11 -model_type pls -cars_iterations 1
@@ -52,32 +58,46 @@ if not os.path.exists("metrics"):
 if not os.path.exists("cars"):
     os.makedirs("cars")
 
-# folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data\\same_as_daojin"
-folder = "data\\"
-filename = os.path.join(folder, "merge_data_gaolitong.csv")
-data = pd.read_csv(filename, encoding="gbk")
-
-# folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
-configs = pd.read_csv(os.path.join(folder, "configs_gaolitong.csv"))
-
-
 ### read the arguments from command line
 args = parser.parse_args()
 label = args.label
+compared_label = args.compared_label
 start = args.start
 end = args.end
-if end == -1:
-    end = len(data)
 first_wave = args.first_wave
 model_type = args.model_type
 location = args.location
 cars_iterations = args.cars_iterations
 # re_train = args.re_train in ["True", "Yes", "Y", "1", "true", "y", "yes"]
 
+# folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data\\same_as_daojin"
+if "LAB" in location:
+    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
+else:
+    folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data\\same_as_daojin"
+folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
+folder = args.folder
+filename = os.path.join(folder, "merge_data_gaolitong.csv")
+filename = os.path.join(folder, args.filename)
+data = pd.read_csv(filename, encoding="gbk")
+if end == -1:
+    end = len(data)
+
+folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\data"
+
 
 ### only evaluate results where the turbidity is lower the TUR_bound
-TUR_bound = 20
-config = preprocessing.get_configs(label, data, start, end, first_wave)
+if label == "TUR":
+    TUR_bound = 200
+else:
+    TUR_bound = 20
+
+if "daojin" in args.filename:
+    config = preprocessing_daojin.get_configs(label, data, start, end, first_wave)
+    configs = pd.read_csv(os.path.join(folder, "configs_daojin.csv"))
+else:
+    config = preprocessing.get_configs(label, data, start, end, first_wave)
+    configs = pd.read_csv(os.path.join(folder, "configs_gaolitong.csv"))
 
 
 evaluate_idx = utils.select_idx(
@@ -87,6 +107,8 @@ evaluate_idx = utils.select_idx(
     config["lower_bound"],
     config["upper_bound"],
 )
+print(len(config["target"]))
+print("len eval", config["lower_bound"], config["upper_bound"], len(evaluate_idx))
 X1 = config["X1"]
 
 print(
@@ -236,11 +258,132 @@ elif model_type == "lgbm":
     ) = models.lgbm_meta(
         X1, config["target"], config["cut_bound"], config["days"], configs, label
     )
+elif model_type == "bayes_ridge":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.bayes_ridge_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "elst":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.elastic_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "huber":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.huber_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "quantile":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.quantile_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "ransar":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.ransar_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "theilsen":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.theilsen_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "gamma":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.gamma_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "poisson":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.gamma_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "tweedie":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.tweedie_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "passive":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.passive_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "SDG":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.SDG_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "multi":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.multi_meta(X1, config["days"], configs, config, label)
 
 
 ### processing the outcomes
 res_train_cap = models.res_lower_cap(
     config["lower_bound"], config["ranges"], res_train
+)  ### remove invalid values
+res_train_cap = models.res_upper_cap(
+    config["upper_bound"], config["bound1"], config["bound2"], res_train_cap
 )  ### remove invalid values
 
 utils.write_res(res_train_cap, location, label, model_type)
@@ -249,12 +392,15 @@ mape, r2_score, rmse = utils.plot(
     res_train_cap,
     config["target"],
     config["TUR"],
+    config[compared_label],
     evaluate_idx,
     label,
+    compared_label,
     model_type,
     location,
 )
-good_predict_percentage, bad_idx = utils.evaluate(
+# print(config["target"])
+good_predict_percentage, bad_idx, bad_grouped_ratio = utils.evaluate(
     res_train_cap,
     config["target"],
     config["ranges"],
@@ -268,7 +414,7 @@ print("rate of reaching the standard", good_predict_percentage)
 ### update model performances
 if os.path.exists("metrics\\" + location + "_" + label + ".csv"):
     with open("metrics\\" + location + "_" + label + ".csv", "r", newline="") as f:
-        reader = csv.DictReader(f)
+        reader = csv.DictReader(f, quoting=csv.QUOTE_STRINGS)
         metrics_data = [row for row in reader]
     flag = False
     for row in metrics_data:
@@ -279,6 +425,7 @@ if os.path.exists("metrics\\" + location + "_" + label + ".csv"):
                 row["r2_score"] = r2_score
                 row["rmse"] = rmse
                 row["rate of reaching the standard"] = good_predict_percentage
+                row["bad grouped ratio"] = bad_grouped_ratio
     if not flag:
         metrics_data.append(
             {
@@ -287,6 +434,7 @@ if os.path.exists("metrics\\" + location + "_" + label + ".csv"):
                 "r2_score": r2_score,
                 "rmse": rmse,
                 "rate of reaching the standard": good_predict_percentage,
+                "bad grouped ratio": bad_grouped_ratio,
             }
         )
 
@@ -299,9 +447,18 @@ else:
             "r2_score": r2_score,
             "rmse": rmse,
             "rate of reaching the standard": good_predict_percentage,
+            "bad grouped ratio": bad_grouped_ratio,
         }
     )
 
+for i in range(len(metrics_data)):
+    metrics_data[i]["mape"] = float(metrics_data[i]["mape"])
+    metrics_data[i]["r2_score"] = float(metrics_data[i]["r2_score"])
+    metrics_data[i]["rmse"] = float(metrics_data[i]["rmse"])
+    metrics_data[i]["rate of reaching the standard"] = float(
+        metrics_data[i]["rate of reaching the standard"]
+    )
+    metrics_data[i]["bad grouped ratio"] = float(metrics_data[i]["bad grouped ratio"])
 
 with open("metrics\\" + location + "_" + label + ".csv", "w", newline="") as f:
     fieldnames = [
@@ -310,11 +467,38 @@ with open("metrics\\" + location + "_" + label + ".csv", "w", newline="") as f:
         "r2_score",
         "rmse",
         "rate of reaching the standard",
+        "bad grouped ratio",
+        "rank",
     ]
     writer = csv.DictWriter(f, fieldnames=fieldnames)
     writer.writeheader()
-    metrics_data.sort(key=lambda x: float(x["mape"]))
-    writer.writerows(metrics_data)
+
+    l0 = [i["mape"] for i in metrics_data.copy()]
+    l0_sorted = sorted(l0)
+
+    rank1 = [l0_sorted.index(j) for j in l0]
+    rank2 = np.argsort([i["r2_score"] for i in metrics_data.copy()])[::-1]
+
+    l1 = [i["rmse"] for i in metrics_data.copy()]
+    l1_sorted = sorted(l1)
+    rank3 = [l1_sorted.index(j) for j in l1]
+
+    l2 = [i["rate of reaching the standard"] for i in metrics_data.copy()]
+    l2_sorted = sorted(l2, reverse=True)
+    rank4 = [l2_sorted.index(j) for j in l2]
+
+    l3 = [i["bad grouped ratio"] for i in metrics_data.copy()]
+    l3_sorted = sorted(l3)
+    rank5 = [l3_sorted.index(j) for j in l3]
+
+    tmp = [
+        [data, float(i) + float(k) + float(p) + float(q)]
+        for data, i, j, k, p, q in zip(metrics_data, rank1, rank2, rank3, rank4, rank5)
+    ]
+    for i in range(len(tmp)):
+        tmp[i][0]["rank"] = tmp[i][1]
+    tmp = sorted(tmp, key=lambda x: x[1])
+    writer.writerows([pair[0] for pair in tmp])
 
 
 ### save models
