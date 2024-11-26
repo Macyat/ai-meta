@@ -6,17 +6,17 @@ from fileinput import filename
 
 parser = argparse.ArgumentParser(description="Algorithm for gaolitong")
 parser.add_argument(
-    "--location",
+    "--location", "-lo",
     type=str,
     help="gaolitong data or daojin data",
 )
 parser.add_argument(
-    "--select",
+    "--select", '-s',
     type=str,
     help="whether to select the samples that both have gaolitong data and daojin data",
 )
 parser.add_argument(
-    "--compared_label",
+    "--compared_label", "-c",
     type=str,
     help="another element to be compared with",
 )
@@ -79,19 +79,19 @@ for t in model_types:
             start = "10"
         command = "".join(
             [
-                "python Train.py --label ",
+                "python Train.py -l ",
                 l,
-                " --start ",
+                " -s ",
                 start,
-                " --end ",
+                " -e ",
                 end,
-                " --first_wave 11 --model_type ",
+                " -f 11 -m ",
                 t,
-                " --cars_iterations 1 --location ",
+                " -ca 1 -lo ",
                 location,
-                " --compared_label ",
+                " -c ",
                 compared_label,
-                " --parent_folder ",
+                " -p ",
                 parent_folder,
             ]
         )
