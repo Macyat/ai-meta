@@ -27,11 +27,18 @@ parser.add_argument(
 parser.add_argument("--start", "-s", type=int, help="the first row to train")
 parser.add_argument("--end", "-e", type=int, help="the last row to train")
 parser.add_argument(
-    "--first_wave", "-f", type=int, help="the starting wavelength to be selected for training"
+    "--first_wave",
+    "-f",
+    type=int,
+    help="the starting wavelength to be selected for training",
 )
 parser.add_argument("--model_type", "-m", type=str, help="the model selected")
-parser.add_argument("--cars_iterations", "-ca", type=int, help="the times for running cars")
-parser.add_argument("--location", "-lo", type=str, help="where the samples are collected")
+parser.add_argument(
+    "--cars_iterations", "-ca", type=int, help="the times for running cars"
+)
+parser.add_argument(
+    "--location", "-lo", type=str, help="where the samples are collected"
+)
 parser.add_argument("--parent_folder", "-p", type=str, help="where the data locates")
 # parser.add_argument("--filename", type=str, help="name of the data table")
 

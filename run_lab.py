@@ -7,12 +7,14 @@ from fileinput import filename
 
 parser = argparse.ArgumentParser(description="Algorithm for lab data")
 parser.add_argument(
-    "--location", "-l",
+    "--location",
+    "-l",
     type=str,
     help="gaolitong data or daojin data",
 )
 parser.add_argument(
-    "--compared_label", "-c",
+    "--compared_label",
+    "-c",
     type=str,
     help="another element to be compared with",
 )

@@ -16,13 +16,15 @@ compared_label = args.compared_label
 
 commands = [
     "black *.py",
-    "python clean_metrics.py",
-    "python run_futian.py --location gaolitong --select 0 --compared_label "
-    + compared_label,
+    # "python clean_metrics.py",
+    # "python run_futian.py --location gaolitong --select 0 --compared_label "
+    # + compared_label,
     "python run_futian.py --location gaolitong --select 1 --compared_label "
     + compared_label,
-    "python run_futian.py --location daojin --select 0 --compared_label " + compared_label,
-    "python run_futian.py --location daojin --select 1 --compared_label " + compared_label,
+    "python run_futian.py --location daojin --select 0 --compared_label "
+    + compared_label,
+    "python run_futian.py --location daojin --select 1 --compared_label "
+    + compared_label,
     "python run_lab.py --location gaolitong --compared_label " + compared_label,
     "python run_lab.py --location daojin --compared_label " + compared_label,
 ]
