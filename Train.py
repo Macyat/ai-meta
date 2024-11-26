@@ -20,20 +20,20 @@ warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description="Entry for training")
 # parser.add_argument("-re_train", type=str,help="Retrain or not")
-parser.add_argument("-label", type=str, help="element to predict")
+parser.add_argument("--label", type=str, help="element to predict")
 parser.add_argument(
-    "-compared_label", type=str, help="another element to be compared in plots"
+    "--compared_label", type=str, help="another element to be compared in plots"
 )
-parser.add_argument("-start", type=int, help="the first row to train")
-parser.add_argument("-end", type=int, help="the last row to train")
+parser.add_argument("--start", type=int, help="the first row to train")
+parser.add_argument("--end", type=int, help="the last row to train")
 parser.add_argument(
-    "-first_wave", type=int, help="the starting wavelength to be selected for training"
+    "--first_wave", type=int, help="the starting wavelength to be selected for training"
 )
-parser.add_argument("-model_type", type=str, help="the model selected")
-parser.add_argument("-cars_iterations", type=int, help="the times for running cars")
-parser.add_argument("-location", type=str, help="where the samples are collected")
-parser.add_argument("-parent_folder", type=str, help="where the data locates")
-# parser.add_argument("-filename", type=str, help="name of the data table")
+parser.add_argument("--model_type", type=str, help="the model selected")
+parser.add_argument("--cars_iterations", type=int, help="the times for running cars")
+parser.add_argument("--location", type=str, help="where the samples are collected")
+parser.add_argument("--parent_folder", type=str, help="where the data locates")
+# parser.add_argument("--filename", type=str, help="name of the data table")
 
 
 random.seed(10)
