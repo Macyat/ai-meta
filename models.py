@@ -74,7 +74,7 @@ def res_upper_cap(upper_bound, bound1, bound2, res):
     :return: the processed concentration vector
     """
     for i in range(len(res)):
-        if res[i] > upper_bound:
+        if res[i] > upper_bound * 1.5:
             res[i] = random.uniform(bound1, bound2)
     return res
 

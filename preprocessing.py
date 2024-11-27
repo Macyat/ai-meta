@@ -41,6 +41,14 @@ def get_configs(label, data, start, end, first_wave, location):
         mape_bound = 0.15  # mape error bound for bigger concentration
         X1, _ = process(X1)
         X2, _ = process(X2)
+        if "daojin" in location:
+            upper_cap = 100
+            bound1 = 80
+            bound2 = 100
+        else:
+            upper_cap = 30
+            bound1 = 20
+            bound2 = 30
 
     elif label == "COD":
         target = COD
@@ -52,6 +60,14 @@ def get_configs(label, data, start, end, first_wave, location):
         mape_bound = 0.15
         X1, _ = process(X1)
         X2, _ = process(X2)
+        if "daojin" in location:
+            upper_cap = 600
+            bound1 = 500
+            bound2 = 600
+        else:
+            upper_cap = 150
+            bound1 = 100
+            bound2 = 150
 
     elif label == "TN":
         target = TN
@@ -63,6 +79,14 @@ def get_configs(label, data, start, end, first_wave, location):
         mape_bound = 0.15
         X1, _ = process(X1)
         X2, _ = process(X2)
+        if "daojin" in location:
+            upper_cap = 40
+            bound1 = 20
+            bound2 = 40
+        else:
+            upper_cap = 40
+            bound1 = 20
+            bound2 = 40
 
     elif label == "TP":
         target = TP
@@ -74,6 +98,14 @@ def get_configs(label, data, start, end, first_wave, location):
         mape_bound = 0.15
         X1, _ = process(X1)
         X2, _ = process(X2)
+        if "daojin" in location:
+            upper_cap = 10
+            bound1 = 5
+            bound2 = 10
+        else:
+            upper_cap = 10
+            bound1 = 5
+            bound2 = 10
 
     elif label == "AN":
         target = AN
@@ -85,6 +117,14 @@ def get_configs(label, data, start, end, first_wave, location):
         mape_bound = 0.15
         X1, _ = process(X1)
         X2, _ = process(X2)
+        if "daojin" in location:
+            upper_cap = 30
+            bound1 = 20
+            bound2 = 30
+        else:
+            upper_cap = 30
+            bound1 = 20
+            bound2 = 30
 
     elif label == "TUR":
         target = TUR
@@ -96,6 +136,14 @@ def get_configs(label, data, start, end, first_wave, location):
         mape_bound = 0.15
         _, X1 = process(X1)
         _, X2 = process(X2)
+        if "daojin" in location:
+            upper_cap = 350
+            bound1 = 300
+            bound2 = 350
+        else:
+            upper_cap = 150
+            bound1 = 100
+            bound2 = 150
 
     valid_idx = [i for i in range(len(target)) if not math.isnan(target[i])]
     target = target[valid_idx]
@@ -125,7 +173,7 @@ def get_configs(label, data, start, end, first_wave, location):
         "upper_bound": upper_bound,
         "abs_error_bound": abs_error_bound,
         "mape_bound": mape_bound,
-        "upper_bound": ranges[-1] * 1.5,
-        "bound1": ranges[-1],
-        "bound2": ranges[-1] * 1.5,
+        "upper_cap": upper_cap,
+        "bound1": bound1,
+        "bound2": bound2,
     }

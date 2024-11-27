@@ -375,7 +375,7 @@ res_train_cap = models.res_lower_cap(
     config["lower_bound"], config["ranges"], res_train
 )  ### remove invalid values
 res_train_cap = models.res_upper_cap(
-    config["upper_bound"], config["bound1"], config["bound2"], res_train_cap
+    config["upper_cap"], config["bound1"], config["bound2"], res_train_cap
 )  ### remove invalid values
 
 utils.write_res(res_train_cap, location, label, model_type)
