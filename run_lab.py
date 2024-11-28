@@ -27,13 +27,14 @@ parent_folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\"
 
 if location == "daojin":
     location = "Lab_daojin"
-    start = "383"
+    start = "364"
 else:
     location = "Lab_gaolitong"
     start = "751"
 
 
 model_types = [
+    "multi",
     "SDG",  # this is bad at the moment
     "tweedie",
     "gamma",
@@ -51,12 +52,13 @@ model_types = [
     "pls",
     "gpr_pca",
     "gpr",
-    "pls_cars",
-    "ransar",
-    "theilsen",
+    # "pls_cars",
+    # "ransar",
+    # "theilsen",
 ]
 
 labels = ["KMNO", "TN", "TP", "AN", "COD", "TUR"]
+# labels = ["AN"]
 
 
 for t in model_types:

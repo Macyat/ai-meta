@@ -1050,20 +1050,32 @@ def multi_meta(in_data, days, configs, config, label):
     best_model_predict = None
     # target = [[i,j,k,p,q,z] for i,j,k,p,q,z in zip(config["COD"], config["KMNO"], config["AN"], config["TP"],config["TN"],config["TUR"])]
     # mapping = {"COD":0,"KMNO":1,"AN":2,"TP":3,"TN":4,"TUR":5}
+    # target = [
+    #     [i, j, k, p, q]
+    #     for i, j, k, p, q in zip(
+    #         config["COD"], config["KMNO"], config["AN"], config["TP"], config["TN"]
+    #     )
+    # ]
+    # target = [
+    #     [k, p]
+    #     for i, j, k, p, q in zip(
+    #         config["COD"], config["KMNO"], config["AN"], config["TP"], config["TN"]
+    #     )
+    # ]
     target = [
-        [i, j, k, p, q]
+        [i, k]
         for i, j, k, p, q in zip(
             config["COD"], config["KMNO"], config["AN"], config["TP"], config["TN"]
         )
     ]
-    mapping = {"COD": 0, "KMNO": 1, "AN": 2, "TP": 3, "TN": 4, "TUR": 5}
+    mapping = {"COD": 0, "TP": 1}
     for i in range(len(unique_day)):
         train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = [target[i] for i in train_idx]
 
-        clf = linear_model.MultiTaskLasso(max_iter=1000, tol=1e-3, alpha=0.0001)
+        clf = linear_model.MultiTaskLasso(max_iter=1000, tol=1e-3, alpha=configs[label + "2"].values[0])
         clf.fit(X_train, y_train)
 
         res_train.extend(

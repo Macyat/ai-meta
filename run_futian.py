@@ -34,21 +34,22 @@ parent_folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\"
 
 if location == "gaolitong":
     if select_same_period:
-        end = "364"
+        end = "349"
         location = "Futian_gaolitong_select"
     else:
         end = "751"
         location = "Futian_gaolitong"
 else:
     if select_same_period:
-        end = "364"
+        end = "349"
         location = "Futian_daojin_select"
     else:
-        end = "383"
+        end = "364"
         location = "Futian_daojin"
 
 
 model_types = [
+    # "multi",
     "SDG",
     "tweedie",
     "gamma",
@@ -66,12 +67,12 @@ model_types = [
     "pls",
     "gpr_pca",
     "gpr",
-    "pls_cars",
-    "ransar",
-    "theilsen",
+    # "pls_cars",
+    # "ransar",
+    # "theilsen",
 ]
 labels = ["KMNO", "TN", "TP", "AN", "COD", "TUR"]
-
+# labels = ["AN"]
 
 for t in model_types:
     for l in labels:
