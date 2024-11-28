@@ -1075,7 +1075,9 @@ def multi_meta(in_data, days, configs, config, label):
         X_train = in_data[train_idx, :]
         y_train = [target[i] for i in train_idx]
 
-        clf = linear_model.MultiTaskLasso(max_iter=1000, tol=1e-3, alpha=configs[label + "2"].values[0])
+        clf = linear_model.MultiTaskLasso(
+            max_iter=1000, tol=1e-3, alpha=configs[label + "2"].values[0]
+        )
         clf.fit(X_train, y_train)
 
         res_train.extend(
