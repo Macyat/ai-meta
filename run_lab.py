@@ -27,14 +27,14 @@ parent_folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\"
 
 if location == "daojin":
     location = "Lab_daojin"
-    start = "364"
+    start = "349"
 else:
     location = "Lab_gaolitong"
     start = "751"
 
 
 model_types = [
-    "multi",
+    # "multi",
     "SDG",  # this is bad at the moment
     "tweedie",
     "gamma",
