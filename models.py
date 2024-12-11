@@ -1,9 +1,11 @@
 import random
+
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.stats import alpha
 from sklearn import linear_model
 from sklearn.ensemble import AdaBoostRegressor
+from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
 from sklearn.gaussian_process.kernels import (
     RationalQuadratic,
     WhiteKernel,
@@ -17,6 +19,7 @@ from sklearn.linear_model import (
     QuantileRegressor,
     RANSACRegressor,
     TheilSenRegressor,
+    TweedieRegressor,
 )
 from imblearn.over_sampling import ADASYN
 from sklearn.cross_decomposition import PLSRegression
@@ -111,7 +114,9 @@ def pls_meta(in_data, target, bound, days, select_wave, location, label, model_t
     :param days: the day index vector
     :return: the predicted value and two models with their scores
     """
-    data_type = create_type(target, bound)
+
+    if len(target.shape) == 1:
+        data_type = create_type(target, bound)
     unique_day = np.unique(days)
     res_train = []
     best_score1 = -100
@@ -136,20 +141,25 @@ def pls_meta(in_data, target, bound, days, select_wave, location, label, model_t
             )
             print("RMSE of CARS", minRMSECV)
             X_train = X_train[:, lis]
-            X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+            # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
             pls = PLSRegression(
                 n_components=rindex + 1, scale=True, max_iter=500, tol=1e-06, copy=True
             )
             Xtest = in_data[test_idx, :][:, lis]
         else:
-            X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+            # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
             pls = PLSRegression(
                 n_components=30, scale=True, max_iter=500, tol=1e-06, copy=True
             )
             Xtest = in_data[test_idx, :]
         pls.fit(X_train, y_train)
-
-        res_train.extend(pls.predict(Xtest).reshape(1, -1).tolist()[0])
+        mapping = {"TUR": 0, "AN": 1, "COD": 2, "TN": 3, "TP": 4, "KMNO": 5}
+        if len(target.shape) == 1:
+            res_train.extend(pls.predict(Xtest).reshape(1, -1).tolist()[0])
+        else:
+            res_train.extend(
+                pls.predict(Xtest)[:, mapping[label]].reshape(1, -1).tolist()[0]
+            )
         if pls.score(X_train, y_train) > best_score1:
             best_score1 = pls.score(X_train, y_train)
             best_model_fit = pls
@@ -193,19 +203,35 @@ def ridge_meta(in_data, target, bound, days, configs, label, boost):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        parametersGrid = {"alpha": [0.1**i for i in range(1, 10)]}
+        clf = Ridge()
+        logo = LeaveOneGroupOut()
+        tmp = [
+            (train_index, test_index)
+            for _, (train_index, test_index) in enumerate(
+                logo.split(X_train, y_train, days[train_idx])
+            )
+        ]
+        # logo.get_n_splits(X_train, y_train, days[train_idx])
+        # logo.get_n_splits(groups=days[train_idx])
+        clf = GridSearchCV(
+            clf, parametersGrid, scoring="neg_root_mean_squared_error", cv=tmp
+        )
 
-        clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+        # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
         if boost:
             clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
 
+        # clf.fit(X_train, y_train)
         clf.fit(X_train, y_train)
+        # print('LEN coef', clf.best_params_)
 
         res_train.extend(clf.predict(in_data[test_idx, :]))
         Xtest = in_data[test_idx, :]
-        if clf.score(X_train, y_train) > best_score1:
-            best_score1 = clf.score(X_train, y_train)
-            best_model_fit = clf
+        # if clf.score(X_train, y_train) > best_score1:
+        #     best_score1 = clf.score(X_train, y_train)
+        #     best_model_fit = clf
         if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
             best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
             best_model_predict = clf
@@ -246,9 +272,9 @@ def lasso_meta(in_data, target, bound, days, configs, label, boost):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
-        clf = linear_model.Lasso(alpha=configs[label + "2"].values[0])
+        clf = linear_model.Lasso(alpha=0.1 * configs[label + "2"].values[0])
         if boost:
             clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
 
@@ -298,7 +324,7 @@ def gpr_meta(in_data, target, bound, days, kernel_):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         gpr = GaussianProcessRegressor(
             kernel=kernel_,
@@ -360,10 +386,11 @@ def lgbm_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
         scaler = StandardScaler()
         scaler.fit(X_train)
         X_train = scaler.transform(X_train)
+        X_val = in_data[test_idx, :]
         X_val = scaler.transform(in_data[test_idx, :])
         model = LGBMRegressor(
             reg_alpha=configs[label + "1"].values[0],
@@ -373,7 +400,6 @@ def lgbm_meta(in_data, target, bound, days, configs, label):
             n_estimators=300,
         ).fit(X_train, y_train)
         res_train.extend(model.predict(X_val))
-        Xtest = in_data[test_idx, :]
         # if model.score(model.predict(X_val), target[test_idx]) > best_score1:
         #     best_score1 = r2_score(model.predict(X_val), target[test_idx])
         #     best_model_fit = model
@@ -383,12 +409,12 @@ def lgbm_meta(in_data, target, bound, days, configs, label):
         print(
             "predicted r2 score at day",
             i,
-            r2_score(model.predict(Xtest), target[test_idx]),
+            r2_score(model.predict(X_val), target[test_idx]),
         )
         print(
             "predicted RMSE at day",
             i,
-            np.sqrt(mean_squared_error(model.predict(Xtest), target[test_idx])),
+            np.sqrt(mean_squared_error(model.predict(X_val), target[test_idx])),
         )
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
@@ -416,9 +442,61 @@ def bayes_ridge_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
         # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
-        clf = linear_model.BayesianRidge(alpha_1=configs[label + "1"].values[0])
+        # clf = linear_model.BayesianRidge(alpha_1=0.01*configs[label + "1"].values[0])
+        clf = linear_model.BayesianRidge(
+            max_iter=1000, tol=1e-6, alpha_init=1, lambda_init=0.001
+        )
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def ARD_meta(in_data, target, bound, days, configs, label):
+    """
+    To train an ARD regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param bound: the bound to define outliers
+    :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
+    :return: the predicted value and two models with their scores
+    """
+    data_type = create_type(target, bound)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        clf = linear_model.ARDRegression()
 
         clf.fit(X_train, y_train)
 
@@ -466,20 +544,47 @@ def elastic_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        days_train = days[train_idx]
+        parametersGrid = {
+            "alpha": [0.1**i for i in range(1, 10)],
+            "l1_ratio": np.arange(0.0, 1.0, 0.1),
+        }
+        eNet = ElasticNet()
+        logo = LeaveOneGroupOut()
+        # logo.get_n_splits(X_train, y_train, days[train_idx])
+        # logo.get_n_splits(groups=days[train_idx])
+        tmp = [
+            (train_index, test_index)
+            for _, (train_index, test_index) in enumerate(
+                logo.split(X_train, y_train, days[train_idx])
+            )
+        ]
+        # print(len(train_idx))
+        # print(len(days[train_idx]))
+        # clf = GridSearchCV(
+        #     eNet, parametersGrid, scoring="neg_root_mean_squared_error", cv=tmp
+        # )
 
-        # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
-        clf = ElasticNet(alpha=configs[label + "2"].values[0], fit_intercept=True)
+        # X_train0, y_train = resample_meta(np.concatenate((X_train,days[train_idx].reshape(-1,1)),axis=1), y_train, data_type[train_idx])
+        # X_train = X_train0[:,:-1]
+        # days_train = X_train0[:,-1]
+
+        clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+
+        # clf = ElasticNet(alpha=configs[label + "2"].values[0], fit_intercept=True)
         # clf = make_pipeline(StandardScaler(),
         #                     SGDRegressor(max_iter=1000, tol=1e-3))
 
         clf.fit(X_train, y_train)
+        # print("LEN coef", clf.best_params_)
 
         res_train.extend(clf.predict(in_data[test_idx, :]))
         Xtest = in_data[test_idx, :]
-        if clf.score(X_train, y_train) > best_score1:
-            best_score1 = clf.score(X_train, y_train)
-            best_model_fit = clf
+        # if clf.score(X_train, y_train) > best_score1:
+        # if clf.best_score_ > best_score1:
+        #     # best_score1 = clf.score(X_train, y_train)
+        #     best_score1 = clf.best_score_
+        #     best_model_fit = clf
         if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
             best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
             best_model_predict = clf
@@ -519,7 +624,7 @@ def lasso_lars_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
         clf = linear_model.LassoLars(
@@ -574,7 +679,7 @@ def huber_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
         clf = HuberRegressor(alpha=configs[label + "1"].values[0], fit_intercept=True)
@@ -627,7 +732,7 @@ def quantile_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
         clf = QuantileRegressor(
@@ -682,7 +787,7 @@ def ransar_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         # c = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
         kernel_ = (
@@ -746,7 +851,7 @@ def theilsen_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         clf = TheilSenRegressor()
 
@@ -795,18 +900,41 @@ def gamma_meta(in_data, target, bound, days, configs, label):
         train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
-        y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
-
-        clf = linear_model.GammaRegressor(alpha=configs[label + "2"].values[0])
-
-        clf.fit(X_train, y_train)
-
-        res_train.extend(clf.predict(in_data[test_idx, :]))
+        # scaler = StandardScaler()
+        # scaler.fit(X_train)
+        # X_train = scaler.transform(X_train)
         Xtest = in_data[test_idx, :]
-        if clf.score(X_train, y_train) > best_score1:
-            best_score1 = clf.score(X_train, y_train)
-            best_model_fit = clf
+        # Xtest = scaler.transform(in_data[test_idx, :])
+        y_train = target[train_idx]
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        parametersGrid = {
+            "alpha": [0.1**i for i in range(1, 10)]
+        }  # AN: 0.1, TP: 0.0002, COD: 0.000003
+        gamma = linear_model.GammaRegressor()
+        logo = LeaveOneGroupOut()
+        # logo.get_n_splits(X_train, y_train, days[train_idx])
+        # logo.get_n_splits(groups=days[train_idx])
+        tmp = [
+            (train_index, test_index)
+            for _, (train_index, test_index) in enumerate(
+                logo.split(X_train, y_train, days[train_idx])
+            )
+        ]
+
+        clf = linear_model.GammaRegressor(
+            alpha=configs[label + "2"].values[0], warm_start=False
+        )
+        # clf = linear_model.GammaRegressor(alpha=0.0002, warm_start=False, max_iter=1000,tol=0.000000001)
+        # clf = GridSearchCV(gamma, parametersGrid, scoring='neg_mean_absolute_percentage_error', cv=tmp)
+        clf.fit(X_train, y_train)
+        # clf.fit(X_train, y_train)
+        # print('LEN coef', clf.best_params_)
+
+        res_train.extend(clf.predict(Xtest))
+        # Xtest = in_data[test_idx, :]
+        # if clf.score(X_train, y_train) > best_score1:
+        #     best_score1 = clf.score(X_train, y_train)
+        #     best_model_fit = clf
         if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
             best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
             best_model_predict = clf
@@ -846,7 +974,7 @@ def poisson_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         clf = linear_model.PoissonRegressor(alpha=configs[label + "2"].values[0])
 
@@ -896,17 +1024,44 @@ def tweedie_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        days_train = days[train_idx]
+        parametersGrid = {
+            "alpha": [0.1, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001],
+            "power": [0, 1, 1.25, 1.5, 1.75, 2, 3],
+        }
+        tw = TweedieRegressor()
+        logo = LeaveOneGroupOut()
+        tmp = [
+            (train_index, test_index)
+            for _, (train_index, test_index) in enumerate(
+                logo.split(X_train, y_train, days[train_idx])
+            )
+        ]
 
-        clf = linear_model.TweedieRegressor(alpha=configs[label + "2"].values[0])
+        # X_train0, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
+        clf = linear_model.TweedieRegressor(
+            power=1.5, alpha=configs[label + "1"].values[0], max_iter=100
+        )
+        # clf = linear_model.TweedieRegressor(power=1.5, alpha=0.1,
+        #                                     max_iter=100)
+        # clf.fit(X_train, y_train)
+
+        # clf = GridSearchCV(
+        #     tw, parametersGrid, scoring="neg_root_mean_squared_error", cv=tmp
+        # )
         clf.fit(X_train, y_train)
+        # print("LEN coef", clf.best_params_)
 
         res_train.extend(clf.predict(in_data[test_idx, :]))
         Xtest = in_data[test_idx, :]
-        if clf.score(X_train, y_train) > best_score1:
-            best_score1 = clf.score(X_train, y_train)
-            best_model_fit = clf
+        # if clf.score(X_train, y_train) > best_score1:
+        #     best_score1 = clf.score(X_train, y_train)
+        #     best_model_fit = clf
+        # if clf.best_score_ > best_score1:
+        #     # best_score1 = clf.score(X_train, y_train)
+        #     best_score1 = clf.best_score_
+        #     best_model_fit = clf
         if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
             best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
             best_model_predict = clf
@@ -946,7 +1101,7 @@ def passive_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         clf = linear_model.PassiveAggressiveRegressor(epsilon=0.01, n_iter_no_change=50)
 
@@ -996,13 +1151,13 @@ def SDG_meta(in_data, target, bound, days, configs, label):
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
         X_train = in_data[train_idx, :]
         y_train = target[train_idx]
-        X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
+        # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         clf = SGDRegressor(
             max_iter=1000,
             tol=1e-3,
             alpha=configs[label + "1"].values[0],
-            n_iter_no_change=10,
+            n_iter_no_change=50,
         )
         scaler = StandardScaler()
         scaler.fit(X_train)
@@ -1063,12 +1218,17 @@ def multi_meta(in_data, days, configs, config, label):
     #     )
     # ]
     target = [
-        [i, k]
-        for i, j, k, p, q in zip(
-            config["COD"], config["KMNO"], config["AN"], config["TP"], config["TN"]
+        [k, p]
+        for i, j, k, p, q, z in zip(
+            config["COD"],
+            config["KMNO"],
+            config["AN"],
+            config["TP"],
+            config["TN"],
+            config["TUR"],
         )
     ]
-    mapping = {"COD": 0, "TP": 1}
+    mapping = {"AN": 0, "TP": 1}
     for i in range(len(unique_day)):
         train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
@@ -1078,6 +1238,9 @@ def multi_meta(in_data, days, configs, config, label):
         clf = linear_model.MultiTaskLasso(
             max_iter=1000, tol=1e-3, alpha=configs[label + "2"].values[0]
         )
+        # clf = linear_model.MultiTaskLasso(
+        #     max_iter=1000, tol=1e-3, alpha=0.000001
+        # )
         clf.fit(X_train, y_train)
 
         res_train.extend(

@@ -1,4 +1,6 @@
 import csv
+from smtplib import LMTP_PORT
+
 import pandas as pd
 import pickle
 import numpy as np
@@ -78,9 +80,7 @@ if "gaolitong" in location:
     else:
         sub_dir = "gaolitong"
     filename = os.path.join(parent_folder, sub_dir, "merge_data_gaolitong.csv")
-    configs = pd.read_csv(
-        os.path.join(parent_folder, "gaolitong\\configs_gaolitong.csv")
-    )
+    configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong_lab.csv"))
 
 else:
     if "select" in location:
@@ -88,7 +88,7 @@ else:
     else:
         sub_dir = "daojin"
     filename = os.path.join(parent_folder, sub_dir, "merge_data_daojin.csv")
-    configs = pd.read_csv(os.path.join(parent_folder, "daojin\\configs_daojin.csv"))
+    configs = pd.read_csv(os.path.join(parent_folder, "configs_daojin.csv"))
 
 data = pd.read_csv(filename, encoding="gbk")
 
@@ -143,6 +143,40 @@ if model_type == "pls":
         config["cut_bound"],
         config["days"],
         False,
+        location,
+        label,
+        model_type,
+    )
+if model_type == "pls_multi":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.pls_meta(
+        X1,
+        config["labels"],
+        config["cut_bound"],
+        config["days"],
+        False,
+        location,
+        label,
+        model_type,
+    )
+if model_type == "pls_multi_cars":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.pls_meta(
+        X1,
+        config["labels"],
+        config["cut_bound"],
+        config["days"],
+        True,
         location,
         label,
         model_type,
@@ -260,6 +294,26 @@ elif model_type == "bayes_ridge":
     ) = models.bayes_ridge_meta(
         X1, config["target"], config["cut_bound"], config["days"], configs, label
     )
+elif model_type == "ARD":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.ARD_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
+elif model_type == "lasso_lars":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.lasso_lars_meta(
+        X1, config["target"], config["cut_bound"], config["days"], configs, label
+    )
 elif model_type == "elst":
     (
         res_train,
@@ -327,7 +381,7 @@ elif model_type == "poisson":
         best_score_predict,
         best_fit_model,
         best_predict_model,
-    ) = models.gamma_meta(
+    ) = models.poisson_meta(
         X1, config["target"], config["cut_bound"], config["days"], configs, label
     )
 elif model_type == "tweedie":
@@ -391,16 +445,34 @@ mape, r2_score, rmse = utils.plot(
     model_type,
     location,
 )
+adj_r2_score = 1 - (1 - r2_score) * (len(res_train) - 1) / (
+    len(res_train) - X1.shape[1] - 1
+)
 # print(config["target"])
-good_predict_percentage, bad_idx, bad_grouped_ratio = utils.evaluate(
+(
+    good_predict_percentage,
+    bad_idx,
+    bad_grouped_ratio,
+    durbin_watson_value,
+    LM_p,
+    F_p,
+    Kurtosis,
+    skew,
+) = utils.evaluate(
+    X1,
     res_train_cap,
     config["target"],
     config["ranges"],
     evaluate_idx,
     config["abs_error_bound"],
     config["mape_bound"],
+    location,
+    model_type,
+    label,
 )
 print("rate of reaching the standard", good_predict_percentage)
+print("bad_grouped_ratio", bad_grouped_ratio)
+print("adjusted r2 score", adj_r2_score)
 
 
 ### update model performances
@@ -418,6 +490,11 @@ if os.path.exists("metrics\\" + location + "_" + label + ".csv"):
                 row["rmse"] = rmse
                 row["rate of reaching the standard"] = good_predict_percentage
                 row["bad grouped ratio"] = bad_grouped_ratio
+                row["durbin_watson_value"] = durbin_watson_value
+                row["Kurtosis"] = Kurtosis
+                row["skew"] = skew
+                row["LM_p"] = (LM_p,)
+                row["F_p"] = (F_p,)
     if not flag:
         metrics_data.append(
             {
@@ -427,6 +504,11 @@ if os.path.exists("metrics\\" + location + "_" + label + ".csv"):
                 "rmse": rmse,
                 "rate of reaching the standard": good_predict_percentage,
                 "bad grouped ratio": bad_grouped_ratio,
+                "durbin_watson_value": durbin_watson_value,
+                "Kurtosis": Kurtosis,
+                "skew": skew,
+                "LM_p": LM_p,
+                "F_p": F_p,
             }
         )
 
@@ -440,6 +522,11 @@ else:
             "rmse": rmse,
             "rate of reaching the standard": good_predict_percentage,
             "bad grouped ratio": bad_grouped_ratio,
+            "durbin_watson_value": durbin_watson_value,
+            "Kurtosis": Kurtosis,
+            "skew": skew,
+            "LM_p": LM_p,
+            "F_p": F_p,
         }
     )
 
@@ -451,6 +538,13 @@ for i in range(len(metrics_data)):
         metrics_data[i]["rate of reaching the standard"]
     )
     metrics_data[i]["bad grouped ratio"] = float(metrics_data[i]["bad grouped ratio"])
+    metrics_data[i]["durbin_watson_value"] = float(
+        metrics_data[i]["durbin_watson_value"]
+    )
+    metrics_data[i]["Kurtosis"] = float(metrics_data[i]["Kurtosis"])
+    metrics_data[i]["skew"] = float(metrics_data[i]["skew"])
+    metrics_data[i]["LM_p"] = float(metrics_data[i]["LM_p"])
+    metrics_data[i]["F_p"] = float(metrics_data[i]["F_p"])
 
 with open("metrics\\" + location + "_" + label + ".csv", "w", newline="") as f:
     fieldnames = [
@@ -460,6 +554,11 @@ with open("metrics\\" + location + "_" + label + ".csv", "w", newline="") as f:
         "rmse",
         "rate of reaching the standard",
         "bad grouped ratio",
+        "durbin_watson_value",
+        "LM_p",  # LM test p value for Breusch-Pagan test (for Heteroskedasticity)
+        "F_p",  # F test p value for Breusch-Pagan test (for Heteroskedasticity)
+        "Kurtosis",
+        "skew",
         "rank",
     ]
     writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -467,8 +566,8 @@ with open("metrics\\" + location + "_" + label + ".csv", "w", newline="") as f:
 
     l0 = [i["mape"] for i in metrics_data.copy()]
     l0_sorted = sorted(l0)
-
     rank1 = [l0_sorted.index(j) for j in l0]
+
     rank2 = np.argsort([i["r2_score"] for i in metrics_data.copy()])[::-1]
 
     l1 = [i["rmse"] for i in metrics_data.copy()]
@@ -483,13 +582,20 @@ with open("metrics\\" + location + "_" + label + ".csv", "w", newline="") as f:
     l3_sorted = sorted(l3)
     rank5 = [l3_sorted.index(j) for j in l3]
 
+    l4 = [np.abs(i["durbin_watson_value"] - 2) for i in metrics_data.copy()]
+    l4_sorted = sorted(l4)
+    rank6 = [l4_sorted.index(j) for j in l4]
+
     tmp = [
-        [data, float(i) + float(k) + float(p) + float(q)]
-        for data, i, j, k, p, q in zip(metrics_data, rank1, rank2, rank3, rank4, rank5)
+        [data, float(i) + float(k) + float(p) + float(q) + float(z)]
+        for data, i, j, k, p, q, z in zip(
+            metrics_data, rank1, rank2, rank3, rank4, rank5, rank6
+        )
     ]
     for i in range(len(tmp)):
         tmp[i][0]["rank"] = tmp[i][1]
     tmp = sorted(tmp, key=lambda x: x[1])
+
     writer.writerows([pair[0] for pair in tmp])
 
 

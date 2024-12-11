@@ -11,3 +11,4 @@ pytest
 black
 click
 pytest-cov
+statsmodels

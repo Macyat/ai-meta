@@ -30,7 +30,7 @@ select_same_period = args.select in ["True", "Yes", "Y", "1", "true", "y", "yes"
 compared_label = args.compared_label
 location = args.location
 
-parent_folder = "E:\\Matlab\\futian\\futian\\futian1\\raw_data\\"
+parent_folder = "E:\\Program Files\\MATLAB\Matlab\\futian\\futian\\futian1\\raw_data"
 
 if location == "gaolitong":
     if select_same_period:
@@ -50,8 +50,7 @@ else:
 
 model_types = [
     # "multi",
-    "SDG",
-    "tweedie",
+    # "SDG",
     "gamma",
     "passive",
     "poisson",
@@ -67,9 +66,13 @@ model_types = [
     "pls",
     "gpr_pca",
     "gpr",
-    # "pls_cars",
-    # "ransar",
-    # "theilsen",
+    "pls_cars",
+    "pls_multi",
+    "pls_multi_cars",
+    "ARD",
+    "tweedie",
+    "ransar",
+    "theilsen",
 ]
 labels = ["KMNO", "TN", "TP", "AN", "COD", "TUR"]
 # labels = ["AN"]
@@ -96,7 +99,9 @@ for t in model_types:
                 " -c ",
                 compared_label,
                 " -p ",
+                '"',
                 parent_folder,
+                '"',
             ]
         )
         print(command)

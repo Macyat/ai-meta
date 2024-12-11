@@ -7,6 +7,14 @@ from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 import pywt
 import csv
 from sklearn.metrics import r2_score
+from statsmodels.compat import lzip
+from statsmodels.stats.stattools import durbin_watson, jarque_bera
+from statsmodels.stats.diagnostic import het_breuschpagan
+from statsmodels.stats.diagnostic import het_white
+import pandas as pd
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+from scipy import stats
 
 
 def select_idx(target, TUR, TUR_bound, lower_bound, upper_bound):
@@ -29,7 +37,18 @@ def select_idx(target, TUR, TUR_bound, lower_bound, upper_bound):
     ]
 
 
-def evaluate(res, target, ranges, idx, abs_error_bound, mape_bound):
+def evaluate(
+    X,
+    res,
+    target,
+    ranges,
+    idx,
+    abs_error_bound,
+    mape_bound,
+    location,
+    model_type,
+    label,
+):
     """
     To evaluate the models and calculate the rate of results that reach some standard
     :param res: the predicted values
@@ -45,6 +64,8 @@ def evaluate(res, target, ranges, idx, abs_error_bound, mape_bound):
     bad_idx = []
     bad_grouped = 0
     for i in range(len(idx)):
+        # if target[i] <= ranges[0] and res[i] > ranges[0]:
+        #     bad_grouped += 1
         if target[i] <= ranges[1] and res[i] > ranges[1]:
             bad_grouped += 1
         elif ranges[1] < target[i] <= ranges[2] and res[i] > ranges[2]:
@@ -78,16 +99,83 @@ def evaluate(res, target, ranges, idx, abs_error_bound, mape_bound):
         elif len(ranges) >= 5 and ranges[4] < target[i] and ranges[4] < res[i]:
             count += 1
 
-        elif target[i] < ranges[2] and abs(target[i] - res[i]) <= abs_error_bound:
+        # elif target[i] < ranges[2] and abs(target[i] - res[i]) <= abs_error_bound:
+        elif abs(target[i] - res[i]) <= abs_error_bound:
             count += 1
         # 三类以上误差
-        elif (
-            target[i] >= ranges[2] and abs(target[i] - res[i]) / target[i] <= mape_bound
-        ):
+        # elif (
+        #     target[i] >= ranges[2] and abs(target[i] - res[i]) / target[i] <= mape_bound
+        # ):
+        elif abs(target[i] - res[i]) / target[i] <= mape_bound:
             count += 1
         else:
             bad_idx.append(i)
-    return count / len(idx), bad_idx, bad_grouped / len(idx)
+    resid = [i - j for i, j in zip(target, res)]
+    fig = plt.figure()
+    # print(np.abs(residuals))
+    plt.scatter(target, resid, c="blue", edgecolors="black")
+    plt.xlabel("True values")
+    plt.ylabel("Residuals")
+    plt.title("Scatter plot of residuals")
+    plt.savefig(
+        "figs\\" + location + "\\" + label + "_" + model_type + "_residuals_vs_True_all.png"
+    )
+    fig = plt.figure()
+    # print(np.abs(residuals))
+    plt.scatter(res, resid, c="blue", edgecolors="black")
+    plt.xlabel("Predicted values")
+    plt.ylabel("Residuals")
+    plt.title("Scatter plot of residuals")
+    plt.savefig(
+        "figs\\"
+        + location
+        + "\\"
+        + label
+        + "_"
+        + model_type
+        + "_residuals_vs_Predict_all.png"
+    )
+    fig = plt.figure()
+    stats.probplot(resid, dist="norm", plot=plt)
+    plt.title("Model1 Residuals Q-Q Plot")
+    plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + "_QQ.png")
+    plt.figure()
+    plt.hist(resid)
+    plt.title("hist plot of resid")
+    plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + "_hist.png")
+    plt.figure()
+    plt.hist(np.log(resid))
+    plt.title("hist plot of log resid")
+    plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png")
+    # Assumption of Independent Errors
+    durbin_watson_value = durbin_watson(resid)
+    print("durbin_watson_value", durbin_watson_value)
+    X = sm.add_constant(X)
+    model = sm.OLS(target, X)
+    # X = sm.add_constant(X)
+    bp_test = het_breuschpagan(resid, model.exog)
+    labels = [
+        "LM - Statistic",
+        "LM - Test p - value",
+        "F - Statistic",
+        "F - Test p - value",
+    ]
+    print(dict(zip(labels, bp_test)))
+    name = ["Jarque-Bera", "Chi^2 two-tail prob.", "Skew", "Kurtosis"]
+    test = jarque_bera(resid)
+    print(lzip(name, test))
+    skew = test[2]
+    Kurtosis = test[3]
+    return (
+        count / len(idx),
+        bad_idx,
+        bad_grouped / len(idx),
+        durbin_watson_value,
+        bp_test[1],
+        bp_test[3],
+        Kurtosis,
+        skew,
+    )
 
 
 def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location):
@@ -146,6 +234,32 @@ def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location)
         os.makedirs("figs\\" + location)
 
     plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + ".png")
+    fig = plt.figure()
+    residuals = [j - i for i, j in zip(l1, l2)]
+    # print(np.abs(residuals))
+    plt.scatter(l2, residuals, c="blue", edgecolors="black")
+    plt.xlabel("True values")
+    plt.ylabel("Residuals")
+    plt.title("Scatter plot of residuals")
+    plt.savefig(
+        "figs\\" + location + "\\" + label + "_" + model_type + "_residuals_vs_True.png"
+    )
+    fig = plt.figure()
+    # print(np.abs(residuals))
+    plt.scatter(l1, residuals, c="blue", edgecolors="black")
+    plt.xlabel("Predicted values")
+    plt.ylabel("Residuals")
+    plt.title("Scatter plot of residuals")
+    plt.savefig(
+        "figs\\"
+        + location
+        + "\\"
+        + label
+        + "_"
+        + model_type
+        + "_residuals_vs_Predict.png"
+    )
+
     return (
         float(mean_absolute_percentage_error(l1, l2)),
         r2_score(l1, l2),
