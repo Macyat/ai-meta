@@ -80,7 +80,7 @@ if "gaolitong" in location:
     else:
         sub_dir = "gaolitong"
     filename = os.path.join(parent_folder, sub_dir, "merge_data_gaolitong.csv")
-    configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong_lab.csv"))
+    configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong.csv"))
 
 else:
     if "select" in location:
