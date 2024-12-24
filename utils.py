@@ -143,10 +143,14 @@ def evaluate(
     plt.hist(resid)
     plt.title("hist plot of resid")
     plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + "_hist.png")
-    plt.figure()
-    plt.hist(np.log(resid))
-    plt.title("hist plot of log resid")
-    plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png")
+    try:
+        plt.figure()
+        plt.hist(np.log(resid))
+        plt.title("hist plot of log resid")
+        plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png")
+    except:
+        if os.path.exists("figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png"):
+            os.remove("figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png")
     # Assumption of Independent Errors
     durbin_watson_value = durbin_watson(resid)
     print("durbin_watson_value", durbin_watson_value)
@@ -205,8 +209,12 @@ def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location)
     plt.xticks([])
 
     plt.subplot(412)
-    plt.scatter(list(range(len(l1))), l1, s=2, edgecolors="r")
-    plt.scatter(list(range(len(l2))), l2, s=2, edgecolors="b")
+    tmp = [(i, j) for i, j in zip(l1, l2)]
+    tmp.sort(key=lambda x: x[1])
+    plt.scatter(list(range(len(l1))), [i[0] for i in tmp], s=2, edgecolors="r")
+    plt.scatter(list(range(len(l2))), [i[1] for i in tmp], s=2, edgecolors="b")
+    # plt.scatter(list(range(len(l1))), l1, s=2, edgecolors="r")
+    # plt.scatter(list(range(len(l2))), l2, s=2, edgecolors="b")
     plt.legend(["PREDICT", "TRUE"])
     plt.ylabel(label)
     plt.xticks([])

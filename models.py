@@ -215,11 +215,11 @@ def ridge_meta(in_data, target, bound, days, configs, label, boost):
         ]
         # logo.get_n_splits(X_train, y_train, days[train_idx])
         # logo.get_n_splits(groups=days[train_idx])
-        clf = GridSearchCV(
-            clf, parametersGrid, scoring="neg_root_mean_squared_error", cv=tmp
-        )
+        # clf = GridSearchCV(
+        #     clf, parametersGrid, scoring="neg_root_mean_squared_error", cv=tmp
+        # )
 
-        # clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
+        clf = Ridge(alpha=configs[label + "1"].values[0], solver="lbfgs", positive=True)
         if boost:
             clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
 
@@ -1218,7 +1218,7 @@ def multi_meta(in_data, days, configs, config, label):
     #     )
     # ]
     target = [
-        [k, p]
+        [i, j]
         for i, j, k, p, q, z in zip(
             config["COD"],
             config["KMNO"],
@@ -1228,7 +1228,7 @@ def multi_meta(in_data, days, configs, config, label):
             config["TUR"],
         )
     ]
-    mapping = {"AN": 0, "TP": 1}
+    mapping = {"COD": 0, "KMNO": 1, "TP": 2}
     for i in range(len(unique_day)):
         train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]

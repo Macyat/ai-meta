@@ -431,7 +431,7 @@ res_train_cap = models.res_lower_cap(
 res_train_cap = models.res_upper_cap(
     config["upper_cap"], config["bound1"], config["bound2"], res_train_cap
 )  ### remove invalid values
-
+print(min(res_train_cap))
 utils.write_res(res_train_cap, location, label, model_type)
 
 mape, r2_score, rmse = utils.plot(
@@ -493,8 +493,8 @@ if os.path.exists("metrics\\" + location + "_" + label + ".csv"):
                 row["durbin_watson_value"] = durbin_watson_value
                 row["Kurtosis"] = Kurtosis
                 row["skew"] = skew
-                row["LM_p"] = (LM_p,)
-                row["F_p"] = (F_p,)
+                row["LM_p"] = LM_p
+                row["F_p"] = F_p
     if not flag:
         metrics_data.append(
             {

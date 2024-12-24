@@ -98,10 +98,10 @@ def get_configs(label, data, start, end, first_wave, location):
             bound2 = 40
 
     elif label == "TP":
-        target = TP
+        target = TP.astype("float64")
         ranges = [0.02, 0.1, 0.2, 0.3, 0.4]
         cut_bound = 1
-        lower_bound = 0.01
+        lower_bound = 0.02
         upper_bound = 1
         abs_error_bound = 0.02
         mape_bound = 0.15
@@ -173,6 +173,7 @@ def get_configs(label, data, start, end, first_wave, location):
     KMNO = KMNO[valid_idx]
     TP = TP[valid_idx]
     AN = AN[valid_idx]
+    print(max(AN))
     labels = labels[valid_idx, :]
 
     return {
