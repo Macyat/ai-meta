@@ -17,7 +17,17 @@ from statsmodels.formula.api import ols
 from scipy import stats
 
 
-def select_idx(target, TUR, TUR_bound, lower_bound, upper_bound):
+def select_idx(
+    target,
+    TUR,
+    TUR_bound,
+    lower_bound,
+    upper_bound,
+    evaluate_start,
+    evaluate_end,
+    comments,
+    man_made_evaluate,
+):
     """
     To select a part of samples to evaluate the models
     :param target: the target to predict
@@ -27,14 +37,26 @@ def select_idx(target, TUR, TUR_bound, lower_bound, upper_bound):
     :param upper_bound: the upper bound of the target data to be selected
     :return: the vector of selected index
     """
-    return [
-        i
-        for i in range(len(TUR))
-        if TUR[i] <= TUR_bound
-        and target[i] >= lower_bound
-        and target[i] <= upper_bound
-        and not math.isnan(target[i])
-    ]
+    if not man_made_evaluate:
+        return [
+            i
+            for i in range(len(TUR))
+            if TUR[i] <= TUR_bound
+            and lower_bound <= target[i] <= upper_bound
+            and not math.isnan(target[i])
+            and evaluate_start <= i <= evaluate_end
+            and "污" not in comments[i]
+            and "纯" not in comments[i]
+        ]
+    else:
+        return [
+            i
+            for i in range(len(TUR))
+            if TUR[i] <= TUR_bound
+            and lower_bound <= target[i] <= upper_bound
+            and not math.isnan(target[i])
+            and evaluate_start <= i <= evaluate_end
+        ]
 
 
 def evaluate(
@@ -118,7 +140,13 @@ def evaluate(
     plt.ylabel("Residuals")
     plt.title("Scatter plot of residuals")
     plt.savefig(
-        "figs\\" + location + "\\" + label + "_" + model_type + "_residuals_vs_True_all.png"
+        "figs\\"
+        + location
+        + "\\"
+        + label
+        + "_"
+        + model_type
+        + "_residuals_vs_True_all.png"
     )
     fig = plt.figure()
     # print(np.abs(residuals))
@@ -147,10 +175,16 @@ def evaluate(
         plt.figure()
         plt.hist(np.log(resid))
         plt.title("hist plot of log resid")
-        plt.savefig("figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png")
+        plt.savefig(
+            "figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png"
+        )
     except:
-        if os.path.exists("figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png"):
-            os.remove("figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png")
+        if os.path.exists(
+            "figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png"
+        ):
+            os.remove(
+                "figs\\" + location + "\\" + label + "_" + model_type + "_hist_log.png"
+            )
     # Assumption of Independent Errors
     durbin_watson_value = durbin_watson(resid)
     print("durbin_watson_value", durbin_watson_value)
@@ -182,7 +216,9 @@ def evaluate(
     )
 
 
-def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location):
+def plot(
+    res, target, TUR, compared_data, idx, label, compared_label, model_type, location
+):
     """
     To create some plots supporting model evaluating
     :param res: the predicted values
@@ -198,6 +234,8 @@ def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location)
     """
     l1 = [res[i] for i in idx]
     l2 = [target[i] for i in idx]
+    l3 = [compared_data[i] for i in idx]
+    l4 = [TUR[i] for i in idx]
     print("IDX LEN", len(idx))
     print("MAPE", mean_absolute_percentage_error(l1, l2))
     print("r2 score", r2_score(l1, l2))
@@ -209,7 +247,7 @@ def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location)
     plt.xticks([])
 
     plt.subplot(412)
-    tmp = [(i, j) for i, j in zip(l1, l2)]
+    tmp = [(i, j, k, z) for i, j, k, z in zip(l1, l2, l3, l4)]
     tmp.sort(key=lambda x: x[1])
     plt.scatter(list(range(len(l1))), [i[0] for i in tmp], s=2, edgecolors="r")
     plt.scatter(list(range(len(l2))), [i[1] for i in tmp], s=2, edgecolors="b")
@@ -222,7 +260,7 @@ def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location)
     plt.subplot(413)
     plt.scatter(
         list(range(len(idx))),
-        [TN[i] for i in idx],
+        [i[2] for i in tmp],
         s=2,
         edgecolors="y",
     )
@@ -232,7 +270,7 @@ def plot(res, target, TUR, TN, idx, label, compared_label, model_type, location)
     plt.subplot(414)
     plt.scatter(
         list(range(len(idx))),
-        [TUR[i] for i in idx],
+        [i[3] for i in tmp],
         s=2,
         edgecolors="y",
     )

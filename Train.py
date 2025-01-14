@@ -29,6 +29,15 @@ parser.add_argument(
 parser.add_argument("--start", "-s", type=int, help="the first row to train")
 parser.add_argument("--end", "-e", type=int, help="the last row to train")
 parser.add_argument(
+    "--evaluate_start", "-es", type=int, help="the first row to be evaluated"
+)
+parser.add_argument(
+    "--evaluate_end", "-ee", type=int, help="the last row to be evaluated"
+)
+parser.add_argument(
+    "--man_made_evaluate", "-mme", type=int, help="whether to evaluate man-made samples"
+)
+parser.add_argument(
     "--first_wave",
     "-f",
     type=int,
@@ -42,6 +51,7 @@ parser.add_argument(
     "--location", "-lo", type=str, help="where the samples are collected"
 )
 parser.add_argument("--parent_folder", "-p", type=str, help="where the data locates")
+parser.add_argument("--base_model_type", "-b", type=str, help="pretrained model type", default="pls")
 # parser.add_argument("--filename", type=str, help="name of the data table")
 
 
@@ -69,32 +79,65 @@ label = args.label
 compared_label = args.compared_label
 start = args.start
 end = args.end
+evaluate_start = args.evaluate_start
+evaluate_end = args.evaluate_end
 first_wave = args.first_wave
 model_type = args.model_type
 location = args.location
 cars_iterations = args.cars_iterations
 parent_folder = args.parent_folder
+man_made_evaluate = args.man_made_evaluate
+base_model_type = args.base_model_type
+
 if "gaolitong" in location:
     if "select" in location:
         sub_dir = "gaolitong\\same_as_daojin"
     else:
         sub_dir = "gaolitong"
-    filename = os.path.join(parent_folder, sub_dir, "merge_data_gaolitong.csv")
-    configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong.csv"))
+    # filename = os.path.join(parent_folder, sub_dir, "merge_data_gaolitong.csv")
+    # filename = os.path.join(parent_folder, sub_dir, "tmp_1226.csv")
+    if "all" not in location:
+        configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong.csv"))
+        filename = os.path.join(parent_folder, sub_dir, "merge_data_gaolitong.csv")
+        # filename = os.path.join(parent_folder, sub_dir, "tmp_1226.csv")
+    elif "base" in location:
+        configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong.csv"))
+        filename = os.path.join(parent_folder, sub_dir, "merge_data_gaolitong.csv")
+    else:
+        configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong_all.csv"))
+        filename = os.path.join(parent_folder, sub_dir, "merge_data_gaolitong.csv")
 
-else:
+elif "daojin" in location:
     if "select" in location:
         sub_dir = "daojin\\same_as_gaolitong"
     else:
         sub_dir = "daojin"
     filename = os.path.join(parent_folder, sub_dir, "merge_data_daojin.csv")
     configs = pd.read_csv(os.path.join(parent_folder, "configs_daojin.csv"))
+elif "kukeng_common" in location:
+    sub_dir = "gaolitong"
+    configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong.csv"))
+    filename = os.path.join(parent_folder, sub_dir, "merge_data_kukeng_common_avg.csv")
+elif "kukeng_common" in location:
+    sub_dir = "gaolitong"
+    configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong.csv"))
+    filename = os.path.join(parent_folder, sub_dir, "merge_data_kukeng_common.csv")
+elif "kukeng" in location:
+    sub_dir = "gaolitong"
+    configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong.csv"))
+    filename = os.path.join(parent_folder, sub_dir, "merge_data_kukeng.csv")
+elif "dankeng" in location:
+    sub_dir = "gaolitong"
+    configs = pd.read_csv(os.path.join(parent_folder, "configs_gaolitong.csv"))
+    filename = os.path.join(parent_folder, sub_dir, "merge_data_dankeng.csv")
+
 
 data = pd.read_csv(filename, encoding="gbk")
 
 
 if end == -1:
     end = len(data)
+    evaluate_end = len(data)
 
 
 ### only evaluate results where the turbidity is lower the TUR_bound
@@ -102,21 +145,33 @@ if label == "TUR":
     TUR_bound = 200
 else:
     TUR_bound = 20
-
+print(evaluate_start, evaluate_end)
 config = preprocessing.get_configs(label, data, start, end, first_wave, location)
-
-
+print('LLLL',len(config["target"]))
+# print(config["target"])
+print(len([i for i in range(len(config["target"])) if config["target"][i] >= 0.5 and config["target"][i] <= 10 and config["TUR"][i] <= 20]))
+print(config["lower_bound"],config["upper_bound"])
 evaluate_idx = utils.select_idx(
     config["target"],
     config["TUR"],
     TUR_bound,
     config["lower_bound"],
     config["upper_bound"],
+    evaluate_start,
+    evaluate_end,
+    config["comments"],
+    man_made_evaluate,
 )
-print(len(config["target"]))
-print("len eval", config["lower_bound"], config["upper_bound"], len(evaluate_idx))
+print(len(evaluate_idx))
+
 X1 = config["X1"]
 
+print(
+    "evaluation data size",
+    config["lower_bound"],
+    config["upper_bound"],
+    len(evaluate_idx),
+)
 print(
     f"Train data shape:{X1.shape}, Target shape:{end - start}, days shape:{config['days'].shape}, "
     f"unique days shape:{np.unique(config['days']).shape}"
@@ -422,6 +477,87 @@ elif model_type == "multi":
         best_fit_model,
         best_predict_model,
     ) = models.multi_meta(X1, config["days"], configs, config, label)
+elif model_type == "WLS":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.WLS_meta(X1, config["days"], configs, config, label)
+elif model_type == "Basic":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.reg_meta(X1, config[label], config["days"], False)
+elif model_type == "ada_basic":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.reg_meta(X1, config[label], config["days"], True)
+elif model_type == "lars":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.lars_meta(X1, config[label], config["days"], True)
+elif model_type == "lassolars_bic":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.lasso_lars_ic_meta(X1, config[label], config["days"], False, "bic")
+elif model_type == "lassolars_aic":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.lasso_lars_ic_meta(X1, config[label], config["days"], False, "aic")
+elif model_type == "lasso_lars":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.lasso_lars_meta(X1, config[label], config["days"], False, configs, label)
+elif model_type == "orth":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.OrthogonalMatchingPursuit_meta(X1, config[label], config["days"], False)
+elif model_type == "multi_elst":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.multi_elst_meta(X1, config["days"], configs, config, label, False)
+elif model_type == "TL":
+    (
+        res_train,
+        best_score_fit,
+        best_score_predict,
+        best_fit_model,
+        best_predict_model,
+    ) = models.TL_meta(X1, config["days"], configs, config, label, base_model_type)
+
 
 
 ### processing the outcomes
@@ -433,7 +569,7 @@ res_train_cap = models.res_upper_cap(
 )  ### remove invalid values
 print(min(res_train_cap))
 utils.write_res(res_train_cap, location, label, model_type)
-
+print('plot location',location)
 mape, r2_score, rmse = utils.plot(
     res_train_cap,
     config["target"],
@@ -448,7 +584,7 @@ mape, r2_score, rmse = utils.plot(
 adj_r2_score = 1 - (1 - r2_score) * (len(res_train) - 1) / (
     len(res_train) - X1.shape[1] - 1
 )
-# print(config["target"])
+print('len res train cap', len(res_train_cap))
 (
     good_predict_percentage,
     bad_idx,
@@ -599,14 +735,14 @@ with open("metrics\\" + location + "_" + label + ".csv", "w", newline="") as f:
     writer.writerows([pair[0] for pair in tmp])
 
 
-### save models
-### these files can cost a lot of disk space, use them only when you want to bypass the training process
-# with open(
-#     "models\\" + location + "_" + label + "_" + model_type + "_best_fit" + ".pkl", "wb"
-# ) as f:
-#     pickle.dump(best_fit_model, f)
-# with open(
-#     "models\\" + location + "_" + label + "_" + model_type + "_best_predict" + ".pkl",
-#     "wb",
-# ) as f:
-#     pickle.dump(best_predict_model, f)
+## save models
+## these files can cost a lot of disk space, use them only when you want to bypass the training process
+with open(
+    "models\\" + location + "_" + label + "_" + model_type + "_best_fit" + ".pkl", "wb"
+) as f:
+    pickle.dump(best_fit_model, f)
+with open(
+    "models\\" + location + "_" + label + "_" + model_type + "_best_predict" + ".pkl",
+    "wb",
+) as f:
+    pickle.dump(best_predict_model, f)

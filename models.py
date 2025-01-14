@@ -1,3 +1,4 @@
+import pickle
 import random
 
 import numpy as np
@@ -12,6 +13,12 @@ from sklearn.gaussian_process.kernels import (
     ConstantKernel,
 )
 from sklearn.linear_model import (
+    LinearRegression,
+    Lars,
+    LassoLars,
+    LassoLarsIC,
+    OrthogonalMatchingPursuit,
+    MultiTaskElasticNet,
     Ridge,
     SGDRegressor,
     ElasticNet,
@@ -19,7 +26,7 @@ from sklearn.linear_model import (
     QuantileRegressor,
     RANSACRegressor,
     TheilSenRegressor,
-    TweedieRegressor,
+    TweedieRegressor, BayesianRidge,
 )
 from imblearn.over_sampling import ADASYN
 from sklearn.cross_decomposition import PLSRegression
@@ -30,6 +37,9 @@ from lightgbm import LGBMRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
 import CARS
 from sklearn.metrics import mean_squared_error
+import statsmodels.api as sm
+from scipy import stats
+from statsmodels.iolib.table import SimpleTable, default_txt_fmt
 
 rng = np.random.RandomState(1)
 
@@ -176,6 +186,294 @@ def pls_meta(in_data, target, bound, days, select_wave, location, label, model_t
             i,
             np.sqrt(mean_squared_error(pls.predict(Xtest), target[test_idx])),
         )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def reg_meta(in_data, target, days, boost):
+    """
+    To train a linear regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param days: the day index vector
+    :param boost: whether to use ada boosting
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+
+        clf = LinearRegression()
+
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def lars_meta(in_data, target, days, boost):
+    """
+    To train a lars regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param days: the day index vector
+    :param boost: whether to use ada boosting
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+
+        clf = Lars()
+
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def lasso_lars_ic_meta(in_data, target, days, boost, type):
+    """
+    To train a lars regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param days: the day index vector
+    :param boost: whether to use ada boosting
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+
+        clf = LassoLarsIC(criterion=type)
+
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+def lasso_lars_meta(in_data, target, days, boost, configs, label):
+    """
+    To train a lars regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param days: the day index vector
+    :param boost: whether to use ada boosting
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+
+        clf = LassoLars(alpha=configs[label + "2"].values[0])
+
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def OrthogonalMatchingPursuit_meta(in_data, target, days, boost):
+    """
+    To train a lars regression model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param days: the day index vector
+    :param boost: whether to use ada boosting
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+
+        clf = OrthogonalMatchingPursuit()
+
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def multi_elst_meta(in_data, days, configs, config, label, boost):
+    """
+    To train a MultiTaskLasso regression model
+    :param in_data: the spectrum matrix for training
+    :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+
+    target = [
+        [i, j]
+        for i, j, k, p, q, z in zip(
+            config["COD"],
+            config["KMNO"],
+            config["AN"],
+            config["TP"],
+            config["TN"],
+            config["TUR"],
+        )
+    ]
+    mapping = {"COD": 0, "KMNO": 1}
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = [target[i] for i in train_idx]
+
+        clf = MultiTaskElasticNet(
+            max_iter=1000, tol=1e-3, alpha=configs[label + "1"].values[0]
+        )
+
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
+
+        clf.fit(X_train, y_train)
+
+        res_train.extend(
+            [float(i[mapping[label]]) for i in clf.predict(in_data[test_idx, :])]
+        )
+
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
 
@@ -353,6 +651,7 @@ def gpr_meta(in_data, target, bound, days, kernel_):
             i,
             np.sqrt(mean_squared_error(gpr.predict(Xtest), target[test_idx])),
         )
+
     return (
         res_train,
         best_score1,
@@ -1228,7 +1527,7 @@ def multi_meta(in_data, days, configs, config, label):
             config["TUR"],
         )
     ]
-    mapping = {"COD": 0, "KMNO": 1, "TP": 2}
+    mapping = {"COD": 0, "KMNO": 1}
     for i in range(len(unique_day)):
         train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
@@ -1263,6 +1562,95 @@ def multi_meta(in_data, days, configs, config, label):
         #     i,
         #     np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
         # )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def WLS_meta(in_data, days, configs, config, label):
+    """
+    To train a weighted least squares model
+    :param in_data: the spectrum matrix for training
+    :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    target = config[label]
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = [target[i] for i in train_idx]
+
+        res_ols = sm.OLS(y_train, X_train).fit()
+        # print(res_ols.summary())
+
+        # print(res_ols.resid)
+        print(type(res_ols.resid))
+
+        mod_wls = sm.WLS(y_train, X_train, weights=1.0 / abs(res_ols.resid))
+        res_wls = mod_wls.fit()
+        # print(res_wls.summary())
+        # res_train.extend(mod_wls.predict(np.transpose(in_data[test_idx, :])))
+        res_train.extend(np.dot(in_data[test_idx, :], res_wls.params))
+        print(np.dot(in_data[test_idx, :], res_wls.params))
+
+    print(res_train)
+
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+def TL_meta(in_data, days, configs, config, label, base_model_type):
+    """
+    To train a weighted least squares model
+    :param in_data: the spectrum matrix for training
+    :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    target = config[label]
+    for i in range(len(unique_day)):
+        with open(
+                "models\\" + "Futian_gaolitong_base" + "_" + label + "_" + base_model_type + "_best_fit" + ".pkl", "rb"
+        ) as f:
+            clf = pickle.load(f)
+
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i] and j < 751]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i] and j < 751]
+        X_train = in_data[train_idx, :]
+        y_train = [target[i] for i in train_idx]
+
+        clf.fit(X_train, y_train)
+        res_train.extend(clf.predict(in_data[test_idx, :]))
+        Xtest = in_data[test_idx, :]
+        if clf.score(X_train, y_train) > best_score1:
+            best_score1 = clf.score(X_train, y_train)
+            best_model_fit = clf
+        if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+            best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+            best_model_predict = clf
+        print(
+            "predicted r2 score at day",
+            i,
+            r2_score(clf.predict(Xtest), target[test_idx]),
+        )
+        print(
+            "predicted RMSE at day",
+            i,
+            np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        )
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
 

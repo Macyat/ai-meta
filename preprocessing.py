@@ -9,7 +9,7 @@ import utils
 def process(X1):
     # print(X1.shape)
     X1_smooth = copy.deepcopy(X1)
-    X1_snv = copy.deepcopy(X1)
+    # X1_snv = copy.deepcopy(X1)
     for i in range(len(X1)):
         X1_smooth[i, :] = wiener(X1[i, :], mysize=None, noise=None)
         # print(X1_smooth.shape)
@@ -17,7 +17,7 @@ def process(X1):
         # print(X1_smooth.shape)
         X1_smooth[i, :] = utils.wavelet_denoising(X1_smooth[i, :], "sym4", 2)[1:]
         # print(X1_smooth.shape)
-        X1_snv[i, :] = utils.standardize_data(X1_smooth[i, :])  ## snv
+    X1_snv = utils.standardize_data(X1_smooth)  ## snv
     return X1_snv, X1_smooth
 
 
@@ -27,9 +27,9 @@ def get_configs(label, data, start, end, first_wave, location):
         L = 711
     else:
         L = 611
-    print(L)
     TUR = data.values[start:end, L + 3]
-    X1 = data.values[start:end, first_wave : (L + 1)].astype("float64")
+    X1 = data.values[start:end, first_wave : (L + 1 - 10)].astype("float64")
+    # X1 = data.values[start:end, first_wave: 230].astype("float64")
     X2 = data.values[:, (L + 4) : (2 * L + 4)].astype("float64")
     AN = data.values[start:end, 2 * L + 7]
     COD = data.values[start:end, 2 * L + 8]
@@ -39,6 +39,7 @@ def get_configs(label, data, start, end, first_wave, location):
     comments = data.values[start:end, -1]
     tmp = [L + 3, 2 * L + 7, 2 * L + 8, 2 * L + 9, 2 * L + 10, 2 * L + 11]
     labels = data.values[start:end, tmp]
+    comments = data.values[start:end, -2]
 
     if label == "KMNO":  # CODMn
         target = KMNO
@@ -47,7 +48,7 @@ def get_configs(label, data, start, end, first_wave, location):
         lower_bound = 0.5  # the detection limit
         upper_bound = 20
         abs_error_bound = 1  # absolute error bound for smaller concentration
-        mape_bound = 0.15  # mape error bound for bigger concentration
+        mape_bound = 0.15  # mape error bound for higher concentration
         X1, _ = process(X1)
         # X2, _ = process(X2)
         if "daojin" in location:
@@ -83,7 +84,7 @@ def get_configs(label, data, start, end, first_wave, location):
         ranges = [0.2, 0.5, 1, 1.5, 2]
         cut_bound = 2
         lower_bound = 0.5
-        upper_bound = 10
+        upper_bound = 10  # Water Supplies Bureau 0~7
         abs_error_bound = 0.1
         mape_bound = 0.15
         X1, _ = process(X1)
@@ -102,7 +103,7 @@ def get_configs(label, data, start, end, first_wave, location):
         ranges = [0.02, 0.1, 0.2, 0.3, 0.4]
         cut_bound = 1
         lower_bound = 0.02
-        upper_bound = 1
+        upper_bound = 1  # Water Supplies Bureau 0~1.2
         abs_error_bound = 0.02
         mape_bound = 0.15
         X1, _ = process(X1)
@@ -121,7 +122,7 @@ def get_configs(label, data, start, end, first_wave, location):
         ranges = [0.15, 0.5, 1, 1.5, 2]
         cut_bound = 1
         lower_bound = 0.025
-        upper_bound = 5
+        upper_bound = 5  # Water Supplies Bureau 0~4
         abs_error_bound = 0.5
         mape_bound = 0.15
         X1, _ = process(X1)
@@ -153,16 +154,17 @@ def get_configs(label, data, start, end, first_wave, location):
             upper_cap = 150
             bound1 = 100
             bound2 = 150
-    if "dankeng" not in location and "guanlan" not in location:
-        valid_idx = [
-            i
-            for i in range(len(target))
-            if not math.isnan(target[i])
-            and "污" not in comments[i]
-            and "纯" not in comments[i]
-        ]
-    else:
-        valid_idx = [i for i in range(len(target)) if not math.isnan(target[i])]
+    # if "dankeng" not in location and "guanlan" not in location and "all" not in location:
+    #     valid_idx = [
+    #         i
+    #         for i in range(len(target))
+    #         if not math.isnan(target[i])
+    #         and "污" not in comments[i]
+    #         and "纯" not in comments[i]
+    #     ]
+    # else:
+    #     valid_idx = [i for i in range(len(target)) if not math.isnan(target[i])]
+    valid_idx = [i for i in range(len(target)) if not math.isnan(target[i])]
     target = target[valid_idx]
     X1 = X1[valid_idx, :]
     # X2 = X2[valid_idx, :]
@@ -173,8 +175,8 @@ def get_configs(label, data, start, end, first_wave, location):
     KMNO = KMNO[valid_idx]
     TP = TP[valid_idx]
     AN = AN[valid_idx]
-    print(max(AN))
     labels = labels[valid_idx, :]
+    comments = comments[valid_idx]
 
     return {
         "days": days,
@@ -196,4 +198,5 @@ def get_configs(label, data, start, end, first_wave, location):
         "upper_cap": upper_cap,
         "bound1": bound1,
         "bound2": bound2,
+        "comments": comments,
     }

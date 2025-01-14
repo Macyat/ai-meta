@@ -26,6 +26,9 @@ def PC_Cross_Validation(X, y, pc, days):
 
             x_train, x_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
+            if y_train.shape[0] <= i:
+                i = y_train.shape[0] - 1
+
             pls = PLSRegression(n_components=i + 1)
             pls.fit(x_train, y_train)
             y_predict = pls.predict(x_test)
@@ -58,6 +61,7 @@ def Cross_Validation(X, y, pc, days):
         RMSE.append(np.sqrt(mean_squared_error(y_test, y_predict)))
     RMSE_mean = np.mean(RMSE)
     return RMSE_mean
+
 
 
 def CARS_Cloud(X, y, days, end_wave, location, label, model_type, N=30, f=50):
@@ -93,9 +97,10 @@ def CARS_Cloud(X, y, days, end_wave, location, label, model_type, N=30, f=50):
             WaveData = d
         else:
             WaveData = np.vstack((WaveData, d))
-
         if wave_num < f:
             f = wave_num
+        if ycal.shape[0] < f:
+            f = ycal.shape[0]
 
         pls = PLSRegression(n_components=f)
         pls.fit(xcal, ycal)
