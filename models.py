@@ -3,6 +3,7 @@ import random
 
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.special import inv_boxcox
 from scipy.stats import alpha
 from sklearn import linear_model
 from sklearn.ensemble import AdaBoostRegressor
@@ -26,13 +27,14 @@ from sklearn.linear_model import (
     QuantileRegressor,
     RANSACRegressor,
     TheilSenRegressor,
-    TweedieRegressor, BayesianRidge,
+    TweedieRegressor,
+    BayesianRidge,
 )
 from imblearn.over_sampling import ADASYN
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.metrics import r2_score
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, PowerTransformer
 from lightgbm import LGBMRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
 import CARS
@@ -40,6 +42,11 @@ from sklearn.metrics import mean_squared_error
 import statsmodels.api as sm
 from scipy import stats
 from statsmodels.iolib.table import SimpleTable, default_txt_fmt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from scipy.stats import boxcox
 
 rng = np.random.RandomState(1)
 
@@ -328,6 +335,7 @@ def lasso_lars_ic_meta(in_data, target, days, boost, type):
             np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
         )
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
 
 def lasso_lars_meta(in_data, target, days, boost, configs, label):
     """
@@ -1177,7 +1185,7 @@ def theilsen_meta(in_data, target, bound, days, configs, label):
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
 
-def gamma_meta(in_data, target, bound, days, configs, label):
+def gamma_meta(in_data, target, bound, days, configs, label, boost):
     """
     To train a Generalized Linear Model with a Gamma distribution
     :param in_data: the spectrum matrix for training
@@ -1219,10 +1227,11 @@ def gamma_meta(in_data, target, bound, days, configs, label):
                 logo.split(X_train, y_train, days[train_idx])
             )
         ]
-
         clf = linear_model.GammaRegressor(
             alpha=configs[label + "2"].values[0], warm_start=False
         )
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
         # clf = linear_model.GammaRegressor(alpha=0.0002, warm_start=False, max_iter=1000,tol=0.000000001)
         # clf = GridSearchCV(gamma, parametersGrid, scoring='neg_mean_absolute_percentage_error', cv=tmp)
         clf.fit(X_train, y_train)
@@ -1250,7 +1259,96 @@ def gamma_meta(in_data, target, bound, days, configs, label):
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
 
-def poisson_meta(in_data, target, bound, days, configs, label):
+class GammaHuberModel(torch.nn.Module):
+    def __init__(self, n_features, link='log'):
+        super().__init__()
+        self.beta = torch.nn.Parameter(torch.randn(n_features, dtype=torch.float64))
+        self.link = link  # 'log', 'inverse', 'identity'
+
+    def forward(self, X):
+        linear = X @ self.beta
+        if self.link == 'log':
+            return torch.exp(linear)
+        elif self.link == 'inverse':
+            return 1.0 / (linear + 1e-6)  # 防止除零
+        elif self.link == 'identity':
+            return torch.clamp(linear, min=1e-6)  # 确保输出为正
+
+
+# 自定义损失函数
+def gamma_huber_loss(y_pred, y_true, delta=1.0):
+    residuals = y_true - y_pred
+    mask = torch.abs(residuals) <= delta
+    loss = torch.where(mask, 0.5 * residuals ** 2, delta * (torch.abs(residuals) - 0.5 * delta))
+    return loss.mean()
+
+
+def gamma_huber(in_data, target, days, configs, label):
+    """
+        To train a Gamma Huber Model
+        :param in_data: the spectrum matrix for training
+        :param target: the target to predict
+        :param days: the day index vector
+        :param configs: hyperparameters for ridge/lasso model
+        :param label: which element
+        :return: the predicted value and two models with their scores
+        """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = target[train_idx]
+        print(type(X_train))
+        print(type(y_train))
+        X_test = in_data[test_idx, :]
+        y_test = target[test_idx]
+        X_tensor = torch.tensor(X_train.astype("float64"))
+        y_tensor = torch.tensor(y_train.astype("float64"))
+
+        X_test_tensor = torch.tensor(X_test.astype("float64"))
+        y_test_tensor = torch.tensor(y_test.astype("float64"))
+
+        print(X_tensor.shape)
+        model = GammaHuberModel(n_features=X_tensor.shape[1])
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+        for epoch in range(100000):
+            optimizer.zero_grad()
+            y_pred = model(X_tensor)
+            loss = gamma_huber_loss(y_pred, y_tensor, delta=1.5)
+            loss.backward()
+            optimizer.step()
+            if epoch % 100 == 0:
+                print(f"Epoch {epoch}, Loss: {loss.item():.3f}")
+
+        # print("估计系数:", model.beta.detach().numpy())
+
+        print(model(X_test_tensor).tolist())
+        res_train.extend(model(X_test_tensor).tolist())
+        # if r2_score(clf.predict(Xtest), target[test_idx]) > best_score2:
+        #     best_score2 = r2_score(clf.predict(Xtest), target[test_idx])
+        #     best_model_predict = clf
+        # print(
+        #     "predicted r2 score at day",
+        #     i,
+        #     r2_score(clf.predict(Xtest), target[test_idx]),
+        # )
+        # print(
+        #     "predicted RMSE at day",
+        #     i,
+        #     np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
+        # )
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+
+def poisson_meta(in_data, target, bound, days, configs, label, boost):
     """
     To train a Generalized Linear Model with a Poisson distribution
     :param in_data: the spectrum matrix for training
@@ -1261,6 +1359,13 @@ def poisson_meta(in_data, target, bound, days, configs, label):
     :param label: which element
     :return: the predicted value and two models with their scores
     """
+    mean = np.mean(target)
+    var = np.var(target)
+    # print("标签方差", var)
+    # print("标签均值", mean)
+    # print(f"方差/均值比: {var / mean:.2f}")
+    if var > mean:
+        print("target过离散，建议使用负二项回归")
     data_type = create_type(target, bound)
     unique_day = np.unique(days)
     res_train = []
@@ -1276,6 +1381,8 @@ def poisson_meta(in_data, target, bound, days, configs, label):
         # X_train, y_train = resample_meta(X_train, y_train, data_type[train_idx])
 
         clf = linear_model.PoissonRegressor(alpha=configs[label + "2"].values[0])
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
 
         clf.fit(X_train, y_train)
 
@@ -1300,7 +1407,7 @@ def poisson_meta(in_data, target, bound, days, configs, label):
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
 
-def tweedie_meta(in_data, target, bound, days, configs, label):
+def tweedie_meta(in_data, target, bound, days, configs, label, boost):
     """
     To train a Generalized Linear Model with a Tweedie distribution
     :param in_data: the spectrum matrix for training
@@ -1328,7 +1435,7 @@ def tweedie_meta(in_data, target, bound, days, configs, label):
             "alpha": [0.1, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001],
             "power": [0, 1, 1.25, 1.5, 1.75, 2, 3],
         }
-        tw = TweedieRegressor()
+        tw = TweedieRegressor(power=1.5)
         logo = LeaveOneGroupOut()
         tmp = [
             (train_index, test_index)
@@ -1342,6 +1449,9 @@ def tweedie_meta(in_data, target, bound, days, configs, label):
         clf = linear_model.TweedieRegressor(
             power=1.5, alpha=configs[label + "1"].values[0], max_iter=100
         )
+
+        if boost:
+            clf = AdaBoostRegressor(clf, n_estimators=300, random_state=rng)
         # clf = linear_model.TweedieRegressor(power=1.5, alpha=0.1,
         #                                     max_iter=100)
         # clf.fit(X_train, y_train)
@@ -1517,7 +1627,7 @@ def multi_meta(in_data, days, configs, config, label):
     #     )
     # ]
     target = [
-        [i, j]
+        [i,k,p,q, z]
         for i, j, k, p, q, z in zip(
             config["COD"],
             config["KMNO"],
@@ -1527,7 +1637,7 @@ def multi_meta(in_data, days, configs, config, label):
             config["TUR"],
         )
     ]
-    mapping = {"COD": 0, "KMNO": 1}
+    mapping = {"COD": 0, "AN": 1,"TP": 2, "TN": 3, "TUR":4}
     for i in range(len(unique_day)):
         train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
@@ -1565,6 +1675,7 @@ def multi_meta(in_data, days, configs, config, label):
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
 
+import statsmodels.api as sm
 def WLS_meta(in_data, days, configs, config, label):
     """
     To train a weighted least squares model
@@ -1591,16 +1702,55 @@ def WLS_meta(in_data, days, configs, config, label):
         # print(res_ols.summary())
 
         # print(res_ols.resid)
-        print(type(res_ols.resid))
+        # print(type(res_ols.resid))
 
         mod_wls = sm.WLS(y_train, X_train, weights=1.0 / abs(res_ols.resid))
         res_wls = mod_wls.fit()
         # print(res_wls.summary())
         # res_train.extend(mod_wls.predict(np.transpose(in_data[test_idx, :])))
         res_train.extend(np.dot(in_data[test_idx, :], res_wls.params))
-        print(np.dot(in_data[test_idx, :], res_wls.params))
+    #     print(np.dot(in_data[test_idx, :], res_wls.params))
+    #
+    # print(res_train)
 
-    print(res_train)
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+def box_cox(in_data, days, config, label):
+    """
+    To train a box cox model
+    :param in_data: the spectrum matrix for training
+    :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
+    :return: the predicted value and two models with their scores
+    """
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    target = config[label]
+    for i in range(len(unique_day)):
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = [target[i] for i in train_idx]
+        X_test = in_data[test_idx, :]
+        y_test = [target[i] for i in test_idx]
+        # print([i + 1e-6 for i in y_train])
+
+        # y_train_trans, lambda_ = boxcox(np.array([np.log(i + 1e-6) for i in y_train]))
+        # print('lambda', lambda_)
+        pt = PowerTransformer(method='yeo-johnson',standardize=False)
+        y_train_trans = pt.fit_transform(np.array(y_train).reshape(-1,1))
+        print("拟合的lambda:", pt.lambdas_[0])
+        model = sm.OLS(y_train_trans, sm.add_constant(X_train)).fit()
+        y_pred_trans = model.predict(sm.add_constant(X_test)).reshape(-1,1)
+
+        y_pred = [float(i) for i in pt.inverse_transform(y_pred_trans).reshape(-1,)]
+        print(y_test, y_pred_trans, y_pred)
+        res_train.extend(y_pred)
 
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
@@ -1623,11 +1773,21 @@ def TL_meta(in_data, days, configs, config, label, base_model_type):
     target = config[label]
     for i in range(len(unique_day)):
         with open(
-                "models\\" + "Futian_gaolitong_base" + "_" + label + "_" + base_model_type + "_best_fit" + ".pkl", "rb"
+            "models\\"
+            + "Futian_gaolitong_base"
+            + "_"
+            + label
+            + "_"
+            + base_model_type
+            + "_best_fit"
+            + ".pkl",
+            "rb",
         ) as f:
             clf = pickle.load(f)
 
-        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i] and j < 751]
+        train_idx = [
+            j for j in range(len(days)) if days[j] != unique_day[i] and j < 751
+        ]
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i] and j < 751]
         X_train = in_data[train_idx, :]
         y_train = [target[i] for i in train_idx]
@@ -1652,6 +1812,127 @@ def TL_meta(in_data, days, configs, config, label, base_model_type):
             np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
         )
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
+class DynamicWeightedLoss(nn.Module):
+    def __init__(self, base_loss=nn.MSELoss(reduction='none'), alpha=0.1):
+        """
+        :param alpha: 权重衰减系数，控制对高损失样本的抑制强度（越大则抑制越强）
+        """
+        super().__init__()
+        self.base_loss = base_loss
+        self.alpha = alpha
+
+    def forward(self, inputs, targets, reduction='mean'):
+        # 计算每个样本的损失（shape: [batch_size]）
+        losses = self.base_loss(inputs.squeeze(), targets)
+
+        # 动态计算权重（指数衰减函数）
+        weights = torch.exp(-self.alpha * losses.detach())
+
+        # 归一化权重（保持梯度稳定性）
+        weights = weights / (weights.sum() + 1e-8) * len(weights)
+
+        # 加权损失
+        weighted_loss = (weights * losses).sum()
+
+        return weighted_loss if reduction == 'sum' else weighted_loss / len(losses)
+
+
+# 定义神经网络模型（输入601维，输出1维）
+class SpectralModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(591, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.5),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+def dynamic_meta(in_data, days, configs, config, label):
+    # 训练配置
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # model = SpectralModel().to(device)
+    # optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+    # 使用动态加权损失（alpha=0.5）
+    criterion = DynamicWeightedLoss(alpha=0.1)
+
+    # 数据加载（假设本地实验室数据）
+    # train_dataset = SyntheticDataset(num_samples=2000)
+    # train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    unique_day = np.unique(days)
+    res_train = []
+    best_score1 = -100
+    best_score2 = -100
+    best_model_fit = None
+    best_model_predict = None
+    target = config[label]
+    for i in range(len(unique_day)):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = SpectralModel().to(device)
+        optimizer = optim.Adam(model.parameters(), lr=1e-3)
+        criterion = DynamicWeightedLoss(alpha=0.5)
+        train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
+        test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
+        X_train = in_data[train_idx, :]
+        y_train = [target[i] for i in train_idx]
+        X_test = in_data[test_idx, :]
+        y_test = [target[i] for i in test_idx]
+
+
+
+    # 训练循环
+        for epoch in range(100):
+            model.train()
+            total_loss = 0.0
+
+            # for batch_X, batch_y_noisy, _ in train_loader:  # 注意：训练时使用含噪声标签
+            #     batch_X, batch_y_noisy = batch_X.to(device), batch_y_noisy.to(device)
+
+            # 前向传播
+            preds = model(torch.tensor(X_train.astype("float32"))).squeeze()
+
+            # 计算动态加权损失
+            loss = criterion(preds, torch.tensor(y_train))
+
+            # 反向传播
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+
+            # 验证（假设有少量干净标签）
+            model.eval()
+            with torch.no_grad():
+                # 使用合成数据中的真实标签验证
+                # X_val, _, y_val = train_dataset[:100]  # 取100个样本验证
+                val_preds = model(torch.tensor(X_test.astype("float32")).to(device)).squeeze()
+                val_loss = nn.MSELoss()(val_preds, torch.tensor(y_test).to(device)).item()
+
+            print(f"Epoch {epoch + 1} | Train Loss: {total_loss / len(X_train):.4f} | Val Loss: {val_loss:.4f}")
+
+        # Xtest = in_data[test_idx, :]
+            if total_loss / len(X_train) > best_score1:
+                best_score1 = total_loss / len(X_train)
+                best_model_fit = model
+        res_train.extend(
+            list(val_preds)
+        )
+            # if r2_score(val_preds, y_test) > best_score2:
+            #     best_score2 = r2_score(val_preds, y_test)
+            #     best_model_predict = model
+    return res_train, best_score1, best_score2, best_model_fit, best_model_predict
+
+
 
 
 def plot_gpr(x, y, p, idx, sigma, label):

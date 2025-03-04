@@ -19,6 +19,7 @@ from scipy import stats
 
 def select_idx(
     target,
+    y_pred,
     TUR,
     TUR_bound,
     lower_bound,
@@ -44,6 +45,7 @@ def select_idx(
             if TUR[i] <= TUR_bound
             and lower_bound <= target[i] <= upper_bound
             and not math.isnan(target[i])
+            and not math.isnan(y_pred[i])
             and evaluate_start <= i <= evaluate_end
             and "污" not in comments[i]
             and "纯" not in comments[i]
@@ -55,6 +57,7 @@ def select_idx(
             if TUR[i] <= TUR_bound
             and lower_bound <= target[i] <= upper_bound
             and not math.isnan(target[i])
+            and not math.isnan(y_pred)
             and evaluate_start <= i <= evaluate_end
         ]
 
@@ -101,37 +104,64 @@ def evaluate(
         ):
             bad_grouped += 1
 
-    for i in range(len(idx)):
-        if target[i] <= ranges[1] and res[i] <= ranges[1]:
-            count += 1
+    # ref. https://www.mee.gov.cn/xxgk2018/xxgk/xxgk06/202405/W020240511533747829144.pdf
+    if label != "TUR":
 
-        elif ranges[1] < target[i] <= ranges[2] and ranges[1] < res[i] <= ranges[2]:
-            count += 1
+        for i in range(len(idx)):
+            if target[i] <= ranges[1] and res[i] <= ranges[1]:
+                count += 1
 
-        elif ranges[2] < target[i] <= ranges[3] and ranges[2] < res[i] <= ranges[3]:
-            count += 1
+            elif target[i] <= ranges[1] and abs(target[i] - res[i]) / target[i] <= 0.4:
+                count += 1
 
-        elif (
-            len(ranges) >= 5
-            and ranges[3] < target[i] <= ranges[4]
-            and ranges[3] < res[i] <= ranges[4]
-        ):
-            count += 1
+            elif ranges[1] < target[i] <= ranges[3] and abs(target[i] - res[i]) / target[i] <= 0.3:
+                count += 1
 
-        elif len(ranges) >= 5 and ranges[4] < target[i] and ranges[4] < res[i]:
-            count += 1
+            elif target[i] > ranges[3] and abs(target[i] - res[i]) / target[i] <= 0.2:
+                count += 1
 
-        # elif target[i] < ranges[2] and abs(target[i] - res[i]) <= abs_error_bound:
-        elif abs(target[i] - res[i]) <= abs_error_bound:
-            count += 1
-        # 三类以上误差
+            else:
+                bad_idx.append(i)
+
+    else:
+        for i in range(len(idx)):
+            if target[i] <= ranges[0] or target[i] >= ranges[2]:
+                count += 1
+            elif ranges[0] < target[i] <= ranges[1] and abs(target[i] - res[i]) / target[i] <= 0.3:
+                count += 1
+            elif ranges[1] < target[i] < ranges[2] and abs(target[i] - res[i]) / target[i] <= 0.2:
+                count += 1
+            else:
+                bad_idx.append(i)
+
+
+
+
+
+        # elif ranges[2] < target[i] <= ranges[3] and ranges[2] < res[i] <= ranges[3]:
+        #     count += 1
+
         # elif (
-        #     target[i] >= ranges[2] and abs(target[i] - res[i]) / target[i] <= mape_bound
+        #     len(ranges) >= 5
+        #     and ranges[3] < target[i] <= ranges[4]
+        #     and ranges[3] < res[i] <= ranges[4]
         # ):
-        elif abs(target[i] - res[i]) / target[i] <= mape_bound:
-            count += 1
-        else:
-            bad_idx.append(i)
+        #     count += 1
+        #
+        # elif len(ranges) >= 5 and ranges[4] < target[i] and ranges[4] < res[i]:
+        #     count += 1
+        #
+        # # elif target[i] < ranges[2] and abs(target[i] - res[i]) <= abs_error_bound:
+        # elif abs(target[i] - res[i]) <= abs_error_bound:
+        #     count += 1
+        # # 三类以上误差
+        # # elif (
+        # #     target[i] >= ranges[2] and abs(target[i] - res[i]) / target[i] <= mape_bound
+        # # ):
+        # elif abs(target[i] - res[i]) / target[i] <= mape_bound:
+        #     count += 1
+        # else:
+        #     bad_idx.append(i)
     resid = [i - j for i, j in zip(target, res)]
     fig = plt.figure()
     # print(np.abs(residuals))
@@ -232,6 +262,8 @@ def plot(
     LAB is for samples created in out lab by mixing dirty water and river water
     :return: mape and r2_score of evaluated data
     """
+    print(len(idx))
+    print(len(res))
     l1 = [res[i] for i in idx]
     l2 = [target[i] for i in idx]
     l3 = [compared_data[i] for i in idx]

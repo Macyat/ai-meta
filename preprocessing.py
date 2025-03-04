@@ -30,14 +30,18 @@ def get_configs(label, data, start, end, first_wave, location):
     TUR = data.values[start:end, L + 3]
     X1 = data.values[start:end, first_wave : (L + 1 - 10)].astype("float64")
     # X1 = data.values[start:end, first_wave: 230].astype("float64")
-    X2 = data.values[:, (L + 4) : (2 * L + 4)].astype("float64")
+    X2 = data.values[start:end, (L + 4 + 10) : (2 * L + 4 - 10)].astype("float64")
+    # print(X1.shape)
+    # print(X2.shape)
+    # X1 = [X1,X2]
     AN = data.values[start:end, 2 * L + 7]
     COD = data.values[start:end, 2 * L + 8]
     TN = data.values[start:end, 2 * L + 9]
     TP = data.values[start:end, 2 * L + 10]
     KMNO = data.values[start:end, 2 * L + 11]
     comments = data.values[start:end, -1]
-    tmp = [L + 3, 2 * L + 7, 2 * L + 8, 2 * L + 9, 2 * L + 10, 2 * L + 11]
+    # tmp = [L + 3, 2 * L + 7, 2 * L + 8, 2 * L + 9, 2 * L + 10, 2 * L + 11]
+    tmp = [L + 3, 2 * L + 7, 2 * L + 8, 2 * L + 9, 2 * L + 10]
     labels = data.values[start:end, tmp]
     comments = data.values[start:end, -2]
 
@@ -50,7 +54,7 @@ def get_configs(label, data, start, end, first_wave, location):
         abs_error_bound = 1  # absolute error bound for smaller concentration
         mape_bound = 0.15  # mape error bound for higher concentration
         X1, _ = process(X1)
-        # X2, _ = process(X2)
+        X2, _ = process(X2)
         if "daojin" in location:
             upper_cap = 100
             bound1 = 80
@@ -69,7 +73,7 @@ def get_configs(label, data, start, end, first_wave, location):
         abs_error_bound = 4
         mape_bound = 0.15
         X1, _ = process(X1)
-        # X2, _ = process(X2)
+        X2, _ = process(X2)
         if "daojin" in location:
             upper_cap = 600
             bound1 = 500
@@ -86,9 +90,9 @@ def get_configs(label, data, start, end, first_wave, location):
         lower_bound = 0.5
         upper_bound = 10  # Water Supplies Bureau 0~7
         abs_error_bound = 0.1
-        mape_bound = 0.15
+        mape_bound = 0.3
         X1, _ = process(X1)
-        # X2, _ = process(X2)
+        X2, _ = process(X2)
         if "daojin" in location:
             upper_cap = 40
             bound1 = 20
@@ -107,7 +111,7 @@ def get_configs(label, data, start, end, first_wave, location):
         abs_error_bound = 0.02
         mape_bound = 0.15
         X1, _ = process(X1)
-        # X2, _ = process(X2)
+        X2, _ = process(X2)
         if "daojin" in location:
             upper_cap = 10
             bound1 = 5
@@ -123,10 +127,10 @@ def get_configs(label, data, start, end, first_wave, location):
         cut_bound = 1
         lower_bound = 0.025
         upper_bound = 5  # Water Supplies Bureau 0~4
-        abs_error_bound = 0.5
+        abs_error_bound = 0.2
         mape_bound = 0.15
         X1, _ = process(X1)
-        # X2, _ = process(X2)
+        X2, _ = process(X2)
         if "daojin" in location:
             upper_cap = 30
             bound1 = 20
@@ -145,7 +149,7 @@ def get_configs(label, data, start, end, first_wave, location):
         abs_error_bound = 5
         mape_bound = 0.15
         _, X1 = process(X1)
-        # _, X2 = process(X2)
+        _, X2 = process(X2)
         if "daojin" in location:
             upper_cap = 350
             bound1 = 300
@@ -164,10 +168,12 @@ def get_configs(label, data, start, end, first_wave, location):
     #     ]
     # else:
     #     valid_idx = [i for i in range(len(target)) if not math.isnan(target[i])]
-    valid_idx = [i for i in range(len(target)) if not math.isnan(target[i])]
+    valid_idx = [i for i in range(len(target)) if not math.isnan(target[i]) and not math.isnan(TUR[i]) and not math.isnan(TP[i]) and not math.isnan(AN[i]) and not math.isnan(TUR[i])]
     target = target[valid_idx]
     X1 = X1[valid_idx, :]
-    # X2 = X2[valid_idx, :]
+    X2 = X2[valid_idx, :]
+    # X1 = np.concatenate((X1, X2), axis=1)
+    # print(type(X1))
     days = days[valid_idx]
     TUR = TUR[valid_idx]
     TN = TN[valid_idx]
@@ -177,6 +183,19 @@ def get_configs(label, data, start, end, first_wave, location):
     AN = AN[valid_idx]
     labels = labels[valid_idx, :]
     comments = comments[valid_idx]
+
+    mean = np.mean(target)
+    var = np.var(target)
+    print("标签方差", var)
+    print("标签均值", mean)
+    print(f"方差/均值比: {var / mean:.2f}")
+
+    if var > mean:
+        print("target过离散，建议使用Tweedie回归（1<p<2）")
+    elif var < mean:
+        print("target欠离散, 建议使用gamma或tweedie回归")
+    else:
+        print("可使用poisson回归")
 
     return {
         "days": days,

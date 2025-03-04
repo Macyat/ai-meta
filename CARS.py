@@ -63,7 +63,6 @@ def Cross_Validation(X, y, pc, days):
     return RMSE_mean
 
 
-
 def CARS_Cloud(X, y, days, end_wave, location, label, model_type, N=30, f=50):
     p = 0.8
     m, n = X.shape

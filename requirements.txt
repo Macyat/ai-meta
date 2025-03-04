@@ -12,3 +12,4 @@ black
 click
 pytest-cov
 statsmodels
+torch

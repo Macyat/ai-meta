@@ -18,16 +18,14 @@ commands = [
     "black *.py",
     # "python clean_metrics.py",
     "python clean_metrics.py --location " + "Futian_gaolitong",
-    "python run_futian.py --location gaolitong --select 0 --compared_label "
-    + compared_label,
-    "python run_futian.py --location gaolitong --select 1 --compared_label "
-    + compared_label,
-    "python run_futian.py --location daojin --select 0 --compared_label "
-    + compared_label,
-    "python run_futian.py --location daojin --select 1 --compared_label "
-    + compared_label,
+    "python run.py --location gaolitong --select 0 --compared_label " + compared_label,
+    "python run.py --location gaolitong --select 1 --compared_label " + compared_label,
+    "python run.py --location daojin --select 0 --compared_label " + compared_label,
+    "python run.py --location daojin --select 1 --compared_label " + compared_label,
     "python run_lab.py --location gaolitong --compared_label " + compared_label,
     "python run_lab.py --location daojin --compared_label " + compared_label,
+    "python run.py --location w_digestion_kukeng  --select 0 --compared_label COD -i E:\\Program Files\\MATLAB\Matlab\\futian\\futian\\futian1\\raw_data\\gaolitong\\kukeng_digested.csv -con E:\\Program Files\\MATLAB\\Matlab\\futian\\futian\\futian1\\raw_data\\gaolitong\\configs_gaolitong_kukeng_digested.csv"
+",
 ]
 
 for command in commands:
