@@ -59,7 +59,9 @@ location = args.location
 # configs = "C:\\Users\\Congying\\Desktop\\新建文件夹\\徐州新数据\\configs_gaolitong_xuzhou.csv"
 
 input = "C:\\Users\\Congying\\Desktop\\新建文件夹\\ai14\\data\\merge_data.csv"
-configs = "C:\\Users\\Congying\\Desktop\\新建文件夹\\ai14\\data\\configs_gaolitong_xuzhou.csv"
+configs = (
+    "C:\\Users\\Congying\\Desktop\\新建文件夹\\ai14\\data\\configs_gaolitong_xuzhou.csv"
+)
 
 # configs = args.configs
 
@@ -99,8 +101,7 @@ evaluate_end = "-1"
 
 model_types = [
     "ada_gamma",
-    "ada_tweedie"
-    "multi",
+    "ada_tweedie" "multi",
     "SDG",
     "Basic",
     "ada_basic",
@@ -133,7 +134,7 @@ model_types = [
     "ARD",
     "ransar",
     "theilsen",
-    "box_cox"
+    "box_cox",
 ]
 # labels = ["TP", "AN", "TUR", "COD", "TN", "KMNO"]
 labels = ["TP", "AN", "TUR", "COD", "TN"]

@@ -168,7 +168,15 @@ def get_configs(label, data, start, end, first_wave, location):
     #     ]
     # else:
     #     valid_idx = [i for i in range(len(target)) if not math.isnan(target[i])]
-    valid_idx = [i for i in range(len(target)) if not math.isnan(target[i]) and not math.isnan(TUR[i]) and not math.isnan(TP[i]) and not math.isnan(AN[i]) and not math.isnan(TUR[i])]
+    valid_idx = [
+        i
+        for i in range(len(target))
+        if not math.isnan(target[i])
+        and not math.isnan(TUR[i])
+        and not math.isnan(TP[i])
+        and not math.isnan(AN[i])
+        and not math.isnan(TUR[i])
+    ]
     target = target[valid_idx]
     X1 = X1[valid_idx, :]
     X2 = X2[valid_idx, :]

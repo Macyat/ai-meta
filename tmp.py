@@ -25,7 +25,7 @@ class SyntheticDataset(Dataset):
 
 # 定义动态加权损失函数
 class DynamicWeightedLoss(nn.Module):
-    def __init__(self, base_loss=nn.MSELoss(reduction='none'), alpha=0.5):
+    def __init__(self, base_loss=nn.MSELoss(reduction="none"), alpha=0.5):
         """
         :param alpha: 权重衰减系数，控制对高损失样本的抑制强度（越大则抑制越强）
         """
@@ -33,7 +33,7 @@ class DynamicWeightedLoss(nn.Module):
         self.base_loss = base_loss
         self.alpha = alpha
 
-    def forward(self, inputs, targets, reduction='mean'):
+    def forward(self, inputs, targets, reduction="mean"):
         # 计算每个样本的损失（shape: [batch_size]）
         losses = self.base_loss(inputs.squeeze(), targets)
 
@@ -46,7 +46,7 @@ class DynamicWeightedLoss(nn.Module):
         # 加权损失
         weighted_loss = (weights * losses).sum()
 
-        return weighted_loss if reduction == 'sum' else weighted_loss / len(losses)
+        return weighted_loss if reduction == "sum" else weighted_loss / len(losses)
 
 
 # 定义神经网络模型（输入601维，输出1维）
@@ -60,7 +60,7 @@ class SpectralModel(nn.Module):
             nn.Dropout(0.3),
             nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(128, 1)
+            nn.Linear(128, 1),
         )
 
     def forward(self, x):
@@ -108,4 +108,6 @@ for epoch in range(100):
         val_preds = model(X_val.to(device)).squeeze()
         val_loss = nn.MSELoss()(val_preds, y_val.to(device)).item()
 
-    print(f"Epoch {epoch + 1} | Train Loss: {total_loss / len(train_loader):.4f} | Val Loss: {val_loss:.4f}")
+    print(
+        f"Epoch {epoch + 1} | Train Loss: {total_loss / len(train_loader):.4f} | Val Loss: {val_loss:.4f}"
+    )

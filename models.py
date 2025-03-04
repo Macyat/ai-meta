@@ -1260,18 +1260,18 @@ def gamma_meta(in_data, target, bound, days, configs, label, boost):
 
 
 class GammaHuberModel(torch.nn.Module):
-    def __init__(self, n_features, link='log'):
+    def __init__(self, n_features, link="log"):
         super().__init__()
         self.beta = torch.nn.Parameter(torch.randn(n_features, dtype=torch.float64))
         self.link = link  # 'log', 'inverse', 'identity'
 
     def forward(self, X):
         linear = X @ self.beta
-        if self.link == 'log':
+        if self.link == "log":
             return torch.exp(linear)
-        elif self.link == 'inverse':
+        elif self.link == "inverse":
             return 1.0 / (linear + 1e-6)  # 防止除零
-        elif self.link == 'identity':
+        elif self.link == "identity":
             return torch.clamp(linear, min=1e-6)  # 确保输出为正
 
 
@@ -1279,20 +1279,22 @@ class GammaHuberModel(torch.nn.Module):
 def gamma_huber_loss(y_pred, y_true, delta=1.0):
     residuals = y_true - y_pred
     mask = torch.abs(residuals) <= delta
-    loss = torch.where(mask, 0.5 * residuals ** 2, delta * (torch.abs(residuals) - 0.5 * delta))
+    loss = torch.where(
+        mask, 0.5 * residuals**2, delta * (torch.abs(residuals) - 0.5 * delta)
+    )
     return loss.mean()
 
 
 def gamma_huber(in_data, target, days, configs, label):
     """
-        To train a Gamma Huber Model
-        :param in_data: the spectrum matrix for training
-        :param target: the target to predict
-        :param days: the day index vector
-        :param configs: hyperparameters for ridge/lasso model
-        :param label: which element
-        :return: the predicted value and two models with their scores
-        """
+    To train a Gamma Huber Model
+    :param in_data: the spectrum matrix for training
+    :param target: the target to predict
+    :param days: the day index vector
+    :param configs: hyperparameters for ridge/lasso model
+    :param label: which element
+    :return: the predicted value and two models with their scores
+    """
     unique_day = np.unique(days)
     res_train = []
     best_score1 = -100
@@ -1345,7 +1347,6 @@ def gamma_huber(in_data, target, days, configs, label):
         #     np.sqrt(mean_squared_error(clf.predict(Xtest), target[test_idx])),
         # )
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
-
 
 
 def poisson_meta(in_data, target, bound, days, configs, label, boost):
@@ -1627,7 +1628,7 @@ def multi_meta(in_data, days, configs, config, label):
     #     )
     # ]
     target = [
-        [i,k,p,q, z]
+        [i, k, p, q, z]
         for i, j, k, p, q, z in zip(
             config["COD"],
             config["KMNO"],
@@ -1637,7 +1638,7 @@ def multi_meta(in_data, days, configs, config, label):
             config["TUR"],
         )
     ]
-    mapping = {"COD": 0, "AN": 1,"TP": 2, "TN": 3, "TUR":4}
+    mapping = {"COD": 0, "AN": 1, "TP": 2, "TN": 3, "TUR": 4}
     for i in range(len(unique_day)):
         train_idx = [j for j in range(len(days)) if days[j] != unique_day[i]]
         test_idx = [j for j in range(len(days)) if days[j] == unique_day[i]]
@@ -1676,6 +1677,8 @@ def multi_meta(in_data, days, configs, config, label):
 
 
 import statsmodels.api as sm
+
+
 def WLS_meta(in_data, days, configs, config, label):
     """
     To train a weighted least squares model
@@ -1715,6 +1718,7 @@ def WLS_meta(in_data, days, configs, config, label):
 
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
 
+
 def box_cox(in_data, days, config, label):
     """
     To train a box cox model
@@ -1742,13 +1746,18 @@ def box_cox(in_data, days, config, label):
 
         # y_train_trans, lambda_ = boxcox(np.array([np.log(i + 1e-6) for i in y_train]))
         # print('lambda', lambda_)
-        pt = PowerTransformer(method='yeo-johnson',standardize=False)
-        y_train_trans = pt.fit_transform(np.array(y_train).reshape(-1,1))
+        pt = PowerTransformer(method="yeo-johnson", standardize=False)
+        y_train_trans = pt.fit_transform(np.array(y_train).reshape(-1, 1))
         print("拟合的lambda:", pt.lambdas_[0])
         model = sm.OLS(y_train_trans, sm.add_constant(X_train)).fit()
-        y_pred_trans = model.predict(sm.add_constant(X_test)).reshape(-1,1)
+        y_pred_trans = model.predict(sm.add_constant(X_test)).reshape(-1, 1)
 
-        y_pred = [float(i) for i in pt.inverse_transform(y_pred_trans).reshape(-1,)]
+        y_pred = [
+            float(i)
+            for i in pt.inverse_transform(y_pred_trans).reshape(
+                -1,
+            )
+        ]
         print(y_test, y_pred_trans, y_pred)
         res_train.extend(y_pred)
 
@@ -1815,7 +1824,7 @@ def TL_meta(in_data, days, configs, config, label, base_model_type):
 
 
 class DynamicWeightedLoss(nn.Module):
-    def __init__(self, base_loss=nn.MSELoss(reduction='none'), alpha=0.1):
+    def __init__(self, base_loss=nn.MSELoss(reduction="none"), alpha=0.1):
         """
         :param alpha: 权重衰减系数，控制对高损失样本的抑制强度（越大则抑制越强）
         """
@@ -1823,7 +1832,7 @@ class DynamicWeightedLoss(nn.Module):
         self.base_loss = base_loss
         self.alpha = alpha
 
-    def forward(self, inputs, targets, reduction='mean'):
+    def forward(self, inputs, targets, reduction="mean"):
         # 计算每个样本的损失（shape: [batch_size]）
         losses = self.base_loss(inputs.squeeze(), targets)
 
@@ -1836,7 +1845,7 @@ class DynamicWeightedLoss(nn.Module):
         # 加权损失
         weighted_loss = (weights * losses).sum()
 
-        return weighted_loss if reduction == 'sum' else weighted_loss / len(losses)
+        return weighted_loss if reduction == "sum" else weighted_loss / len(losses)
 
 
 # 定义神经网络模型（输入601维，输出1维）
@@ -1850,11 +1859,12 @@ class SpectralModel(nn.Module):
             nn.Dropout(0.5),
             nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(128, 1)
+            nn.Linear(128, 1),
         )
 
     def forward(self, x):
         return self.net(x)
+
 
 def dynamic_meta(in_data, days, configs, config, label):
     # 训练配置
@@ -1887,9 +1897,7 @@ def dynamic_meta(in_data, days, configs, config, label):
         X_test = in_data[test_idx, :]
         y_test = [target[i] for i in test_idx]
 
-
-
-    # 训练循环
+        # 训练循环
         for epoch in range(100):
             model.train()
             total_loss = 0.0
@@ -1915,24 +1923,26 @@ def dynamic_meta(in_data, days, configs, config, label):
             with torch.no_grad():
                 # 使用合成数据中的真实标签验证
                 # X_val, _, y_val = train_dataset[:100]  # 取100个样本验证
-                val_preds = model(torch.tensor(X_test.astype("float32")).to(device)).squeeze()
-                val_loss = nn.MSELoss()(val_preds, torch.tensor(y_test).to(device)).item()
+                val_preds = model(
+                    torch.tensor(X_test.astype("float32")).to(device)
+                ).squeeze()
+                val_loss = nn.MSELoss()(
+                    val_preds, torch.tensor(y_test).to(device)
+                ).item()
 
-            print(f"Epoch {epoch + 1} | Train Loss: {total_loss / len(X_train):.4f} | Val Loss: {val_loss:.4f}")
+            print(
+                f"Epoch {epoch + 1} | Train Loss: {total_loss / len(X_train):.4f} | Val Loss: {val_loss:.4f}"
+            )
 
-        # Xtest = in_data[test_idx, :]
+            # Xtest = in_data[test_idx, :]
             if total_loss / len(X_train) > best_score1:
                 best_score1 = total_loss / len(X_train)
                 best_model_fit = model
-        res_train.extend(
-            list(val_preds)
-        )
-            # if r2_score(val_preds, y_test) > best_score2:
-            #     best_score2 = r2_score(val_preds, y_test)
-            #     best_model_predict = model
+        res_train.extend(list(val_preds))
+        # if r2_score(val_preds, y_test) > best_score2:
+        #     best_score2 = r2_score(val_preds, y_test)
+        #     best_model_predict = model
     return res_train, best_score1, best_score2, best_model_fit, best_model_predict
-
-
 
 
 def plot_gpr(x, y, p, idx, sigma, label):

@@ -114,7 +114,10 @@ def evaluate(
             elif target[i] <= ranges[1] and abs(target[i] - res[i]) / target[i] <= 0.4:
                 count += 1
 
-            elif ranges[1] < target[i] <= ranges[3] and abs(target[i] - res[i]) / target[i] <= 0.3:
+            elif (
+                ranges[1] < target[i] <= ranges[3]
+                and abs(target[i] - res[i]) / target[i] <= 0.3
+            ):
                 count += 1
 
             elif target[i] > ranges[3] and abs(target[i] - res[i]) / target[i] <= 0.2:
@@ -127,16 +130,18 @@ def evaluate(
         for i in range(len(idx)):
             if target[i] <= ranges[0] or target[i] >= ranges[2]:
                 count += 1
-            elif ranges[0] < target[i] <= ranges[1] and abs(target[i] - res[i]) / target[i] <= 0.3:
+            elif (
+                ranges[0] < target[i] <= ranges[1]
+                and abs(target[i] - res[i]) / target[i] <= 0.3
+            ):
                 count += 1
-            elif ranges[1] < target[i] < ranges[2] and abs(target[i] - res[i]) / target[i] <= 0.2:
+            elif (
+                ranges[1] < target[i] < ranges[2]
+                and abs(target[i] - res[i]) / target[i] <= 0.2
+            ):
                 count += 1
             else:
                 bad_idx.append(i)
-
-
-
-
 
         # elif ranges[2] < target[i] <= ranges[3] and ranges[2] < res[i] <= ranges[3]:
         #     count += 1

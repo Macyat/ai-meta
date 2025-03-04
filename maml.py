@@ -13,10 +13,12 @@ class Regressor(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
+
 # MAML Training Setup
 model = Regressor()
 meta_optimizer = optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = nn.MSELoss()
+
 
 # Simulate tasks (e.g., different sine functions)
 def create_task():
@@ -24,16 +26,17 @@ def create_task():
     phase = torch.rand(1) * 2 * torch.pi  # Random phase
 
     x = torch.rand(500, 1) * 10  # 5 support points
-    print('x shape',x.shape)
+    print("x shape", x.shape)
     x1 = torch.rand(500, 1) * 10  # 5 support points
     y = amplitude * torch.sin(x1 + phase)
-    print('y shape', y.shape)
+    print("y shape", y.shape)
     # print(x)
     # print(y)
     # fig = plt.figure()
     # plt.scatter(x,y)
     # plt.show()
     return x, y
+
 
 # MAML Training Loop
 for step in range(1000):
@@ -47,12 +50,17 @@ for step in range(1000):
         pred = model(x_support)
         loss = loss_fn(pred, y_support)
         print(i)
-        grads = torch.autograd.grad(loss, fast_weights.values(), create_graph=True, allow_unused=True)
+        grads = torch.autograd.grad(
+            loss, fast_weights.values(), create_graph=True, allow_unused=True
+        )
         print(type(fast_weights.items()))
         print(type(grads))
         print(len(grads))
 
-        fast_weights = {name: param - 0.01 * grad for (name, param), grad in zip(fast_weights.items(), grads)}
+        fast_weights = {
+            name: param - 0.01 * grad
+            for (name, param), grad in zip(fast_weights.items(), grads)
+        }
         print(type(fast_weights.values()))
 
     # Outer loop: Evaluate on query set
